@@ -12,7 +12,7 @@ def test_delete_group_success(shared_zone_test_context):
     try:
         new_group = {
             "name": "test-delete-group-success",
-            "email": "test@test.com",
+            "email": "test_delete_group_success@test.com",
             "description": "this is a description",
             "members": [{"id": "ok"}],
             "admins": [{"id": "ok"}]
@@ -43,7 +43,7 @@ def test_delete_group_that_is_already_deleted(shared_zone_test_context):
     try:
         new_group = {
             "name": f"test-delete-group-already{shared_zone_test_context.partition_id}",
-            "email": "test@test.com",
+            "email": "test_delete_group_that_is_already_deleted@test.com",
             "description": "this is a description",
             "members": [{"id": "ok"}],
             "admins": [{"id": "ok"}]
@@ -69,7 +69,7 @@ def test_delete_admin_group(shared_zone_test_context):
         # Create group
         new_group = {
             "name": "test-delete-group-already",
-            "email": "test@test.com",
+            "email": "test_delete_admin_group@test.com",
             "description": "this is a description",
             "members": [{"id": "ok"}],
             "admins": [{"id": "ok"}]
@@ -80,7 +80,7 @@ def test_delete_admin_group(shared_zone_test_context):
         # Create zone with that group ID as admin
         zone = {
             "name": f"one-time{shared_zone_test_context.partition_id}.",
-            "email": "test@test.com",
+            "email": "test_delete_admin_group@test.com",
             "adminGroupId": result_group["id"],
             "connection": {
                 "name": "vinyldns.",
@@ -121,10 +121,11 @@ def test_delete_group_not_authorized(shared_zone_test_context):
     """
     ok_client = shared_zone_test_context.ok_vinyldns_client
     not_admin_client = shared_zone_test_context.dummy_vinyldns_client
+    saved_group = None
     try:
         new_group = {
             "name": "test-delete-group-not-authorized",
-            "email": "test@test.com",
+            "email": "test_delete_group_not_authorized@test.com",
             "description": "this is a description",
             "members": [{"id": "ok"}],
             "admins": [{"id": "ok"}]

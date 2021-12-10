@@ -23,7 +23,7 @@ class ListZonesTestContext(object):
         partition_id = self.partition_id
         group = {
             "name": f"list-zones-group{partition_id}",
-            "email": "test@test.com",
+            "email": f"list-zones-group{partition_id}@test.com",
             "description": "this is a description",
             "members": [{"id": "list-zones-user"}],
             "admins": [{"id": "list-zones-user"}]
@@ -33,7 +33,7 @@ class ListZonesTestContext(object):
         search_zone_1_change = self.client.create_zone(
             {
                 "name": f"list-zones-test-searched-1{partition_id}.",
-                "email": "test@test.com",
+                "email": f"list-zones-test-searched-1{partition_id}@test.com",
                 "shared": False,
                 "adminGroupId": self.list_zones_group["id"],
                 "isTest": True,
@@ -44,7 +44,7 @@ class ListZonesTestContext(object):
         search_zone_2_change = self.client.create_zone(
             {
                 "name": f"list-zones-test-searched-2{partition_id}.",
-                "email": "test@test.com",
+                "email": f"list-zones-test-searched-2{partition_id}@test.com",
                 "shared": False,
                 "adminGroupId": self.list_zones_group["id"],
                 "isTest": True,
@@ -55,7 +55,7 @@ class ListZonesTestContext(object):
         search_zone_3_change = self.client.create_zone(
             {
                 "name": f"list-zones-test-searched-3{partition_id}.",
-                "email": "test@test.com",
+                "email": f"list-zones-test-searched-3{partition_id}@test.com",
                 "shared": False,
                 "adminGroupId": self.list_zones_group["id"],
                 "isTest": True,
@@ -66,7 +66,7 @@ class ListZonesTestContext(object):
         non_search_zone_1_change = self.client.create_zone(
             {
                 "name": f"list-zones-test-unfiltered-1{partition_id}.",
-                "email": "test@test.com",
+                "email": f"list-zones-test-unfiltered-1{partition_id}@test.com",
                 "shared": False,
                 "adminGroupId": self.list_zones_group["id"],
                 "isTest": True,
@@ -77,7 +77,7 @@ class ListZonesTestContext(object):
         non_search_zone_2_change = self.client.create_zone(
             {
                 "name": f"list-zones-test-unfiltered-2{partition_id}.",
-                "email": "test@test.com",
+                "email": f"list-zones-test-unfiltered-2{partition_id}@test.com",
                 "shared": False,
                 "adminGroupId": self.list_zones_group["id"],
                 "isTest": True,

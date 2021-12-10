@@ -10,7 +10,7 @@ def test_list_group_admins_success(shared_zone_test_context):
     try:
         new_group = {
             "name": "test-list-group-admins-success",
-            "email": "test@test.com",
+            "email": "test_list_group_admins_success@test.com",
             "members": [{"id": "ok"}],
             "admins": [{"id": "ok"}, {"id": "dummy"}]
         }
@@ -58,7 +58,7 @@ def test_list_group_admins_unauthed(shared_zone_test_context):
     try:
         new_group = {
             "name": "test-list-group-admins-unauthed",
-            "email": "test@test.com",
+            "email": "test_list_group_admins_unauthed@test.com",
             "members": [{"id": "ok"}],
             "admins": [{"id": "ok"}]
         }

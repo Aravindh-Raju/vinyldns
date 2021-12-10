@@ -28,7 +28,7 @@ class ListRecordSetsTestContext(object):
         partition_id = self.partition_id
         group = {
             "name": f"list-records-group{partition_id}",
-            "email": "test@test.com",
+            "email": f"list-records-group{partition_id}@test.com",
             "description": "this is a description",
             "members": [{"id": "list-records-user"}],
             "admins": [{"id": "list-records-user"}]
@@ -37,7 +37,7 @@ class ListRecordSetsTestContext(object):
         zone_change = self.client.create_zone(
             {
                 "name": f"list-records{partition_id}.",
-                "email": "test@test.com",
+                "email": f"list-records{partition_id}@test.com",
                 "shared": False,
                 "adminGroupId": self.group["id"],
                 "isTest": True,
