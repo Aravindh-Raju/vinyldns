@@ -70,4 +70,30 @@ function convertDateStringsToDates(input) {
             convertDateStringsToDates(value);
         }
     }
+
+    // Redirect to a pages
+    loky('R+E',"","", function(event, handler){
+      event.preventDefault();
+      window.location= "http://localhost:9001/recordsets"
+    });
+
+    loky('G+R',"","", function(event, handler){
+      event.preventDefault();
+      window.location= "http://localhost:9001/groups"
+    });
+
+    loky('Z+R',"","", function(event, handler){
+      event.preventDefault();
+      window.location= "http://localhost:9001/zones"
+    });
+
+    loky('D+R',"","", function(event, handler){
+      event.preventDefault();
+      window.location= "http://localhost:9001/dnschanges"
+    });
+
+    loky('H+R',"","", function(event, handler){
+    event.preventDefault();
+    window.location= "https://www.vinyldns.io/"
+    });
 }

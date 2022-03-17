@@ -259,5 +259,33 @@ angular.module('controller.zones', [])
             });
     };
 
+    // Open connection modal
+    loky('Z+C',"","", function(event, handler){
+          event.preventDefault();
+          $("#zone_connection_modal").modal();
+    });
+    // Show all zones
+    loky('Z+A',"","", function(event, handler){
+          event.preventDefault();
+          document.getElementById("tab2-button").click()
+    });
+    // Show my zones
+    loky('Z+M',"","", function(event, handler){
+          event.preventDefault();
+          document.getElementById("my-zones").click()
+    });
+    // Go to search box
+    loky('Z+S',"","", function(event, handler){
+          event.preventDefault();
+          $("#zone-search-text").fadeOut(100).fadeIn(200).fadeOut(100).fadeIn(200);
+          document.getElementById("zone-search-text").focus();
+    });
+    // Submit search
+    loky('Z+B',"","", function(event, handler){
+        event.preventDefault()
+        $("#zone-search-button").fadeOut(100).fadeIn(200).fadeOut(100).fadeIn(200);
+        document.getElementById("zone-search-button").click()
+    })
+
     $timeout($scope.refreshZones, 0);
 });

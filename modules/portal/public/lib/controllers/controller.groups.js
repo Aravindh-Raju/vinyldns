@@ -278,6 +278,34 @@ angular.module('controller.groups', []).controller('GroupsController', function 
         return isMember || isSupport || isSuper;
     }
 
+    // Open create modal
+    loky('G+C',"","", function(event, handler){
+          event.preventDefault();
+          $("#modal_new_group").modal();
+    });
+    // Show all groups
+    loky('G+A',"","", function(event, handler){
+          event.preventDefault();
+          document.getElementById("all-groups").click()
+    });
+    // Show all groups
+    loky('G+M',"","", function(event, handler){
+          event.preventDefault();
+          document.getElementById("my-groups").click()
+    });
+    // Go to search box
+    loky('G+S',"","", function(event, handler){
+          event.preventDefault();
+          $("#group-search-text").fadeOut(100).fadeIn(200).fadeOut(100).fadeIn(200);
+          document.getElementById("group-search-text").focus();
+    });
+    // Submit search
+    loky('G+B',"","", function(event, handler){
+        event.preventDefault()
+        $("#group-search-button").fadeOut(100).fadeIn(200).fadeOut(100).fadeIn(200);
+        document.getElementById("group-search-button").click()
+    })
+
     //get user data on groups view load
     profileService.getAuthenticatedUserData()
         .then(profileSuccess, profileFailure)

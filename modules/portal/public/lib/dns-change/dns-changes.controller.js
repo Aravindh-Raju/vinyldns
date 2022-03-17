@@ -144,6 +144,12 @@
                 return batchChange.approvalStatus == 'PendingReview' && accountName == batchChange.userName;
             }
 
+            // Redirect to a link
+            loky('D+N',"","", function(event, handler){
+              event.preventDefault();
+              window.location= "http://localhost:9001/dnschanges/new"
+            });
+
             $timeout($scope.refreshBatchChanges, 0);
         });
 })();

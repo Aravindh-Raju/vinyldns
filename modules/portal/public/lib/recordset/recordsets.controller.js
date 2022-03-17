@@ -137,5 +137,19 @@
                         handleError(error, 'recordsService::nextPage-failure');
                     });
             };
+
+        // Go to search box
+        loky('R+S',"","", function(event, handler){
+              event.preventDefault();
+              $("#record-search-text").fadeOut(100).fadeIn(200).fadeOut(100).fadeIn(200);
+              document.getElementById("record-search-text").focus();
+        });
+        // Submit search
+        loky('R+B',"","", function(event, handler){
+            event.preventDefault()
+            $("#record-search-button").fadeOut(100).fadeIn(200).fadeOut(100).fadeIn(200);
+            document.getElementById("record-search-button").click()
+        })
+
     });
 })();
