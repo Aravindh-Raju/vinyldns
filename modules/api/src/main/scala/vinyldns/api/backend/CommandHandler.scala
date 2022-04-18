@@ -53,6 +53,21 @@ object CommandHandler {
   final case class DeleteMessage(message: CommandMessage) extends MessageOutcome
   final case class RetryMessage(message: CommandMessage) extends MessageOutcome
 
+  /**
+    * Handles the flow of each type of change requests using message queue
+    *
+    * @param zoneChangeHandler Zone change details that is to be saved
+    * @param recordChangeHandler Record change details that is to be saved
+    * @param zoneSyncHandler Save Recordset details to it's zone and perform zone sync
+    * @param batchChangeHandler Batch change details that is to be saved
+    * @param mq Message Queue to be used
+    * @param count Message Count
+    * @param pollingInterval Represents a finite duration for polling messages
+    * @param pauseSignal Holds a single value that can be both read and updated.
+    * @param backendResolver To discover backends for zones
+    * @param maxOpen To concurrently run 'n' message batches
+    * @return Stream[IO, Unit] if the change request is successful
+    */
   def mainFlow(
       zoneChangeHandler: ZoneChange => IO[ZoneChange],
       recordChangeHandler: (Backend, RecordSetChange) => IO[RecordSetChange],

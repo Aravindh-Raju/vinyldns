@@ -35,6 +35,15 @@ class BatchChangeConverter(batchChangeRepo: BatchChangeRepository, messageQueue:
 
   private val logger = LoggerFactory.getLogger(classOf[BatchChangeConverter])
 
+  /**
+    * Send the batch change submitted for processing and saving to database
+    *
+    * @param batchChange Batch change to be saved
+    * @param existingZones Zones for the batch change records
+    * @param groupedChanges Grouped recordset changes
+    * @param ownerGroupId Owner Group ID for the submitted records
+    * @return Batch change result
+    */
   def sendBatchForProcessing(
       batchChange: BatchChange,
       existingZones: ExistingZones,

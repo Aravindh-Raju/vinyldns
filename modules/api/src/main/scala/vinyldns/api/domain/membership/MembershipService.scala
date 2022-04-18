@@ -98,6 +98,15 @@ class MembershipService(
       deletedGroup <- deleteGroupData(GroupChange.forDelete(existingGroup, authPrincipal), existingGroup).toResult[Group]
     } yield deletedGroup
 
+  /**
+    * Create a new group using the data provided within a transaction to rollback in case of any exception
+    *
+    * @param groupChangeData Group change details that is to be saved
+    * @param newGroup The details of the new group
+    * @param adminMembers The admin members of the group
+    * @param nonAdminMembers The non admin members of the group
+    * @return IO[Unit] if the group is saved successfully
+    */
   def createGroupData(
    groupChangeData: GroupChange,
    newGroup: Group,
@@ -116,6 +125,17 @@ class MembershipService(
       } yield ()
     }
 
+  /**
+    * Update an existing group using the data provided within a transaction to rollback in case of any exception
+    *
+    * @param groupChangeData Group change details that is to be saved
+    * @param newGroup The details of the group that needs to be updated
+    * @param existingGroup The existing details of the group
+    * @param addedAdmins The admin members of the group
+    * @param addedNonAdmins The non admin members of the group
+    * @param removedMembers The members that needs to be removed from the group
+    * @return IO[Unit] if the group is updated successfully
+    */
   def updateGroupData(
    groupChangeData: GroupChange,
    newGroup: Group,
@@ -138,6 +158,13 @@ class MembershipService(
       } yield ()
     }
 
+  /**
+    * Delete a group using the data provided within a transaction to rollback in case of any exception
+    *
+    * @param groupChangeData Group change details that is to be saved
+    * @param existingGroup The details of the group that needs to be deleted
+    * @return IO[Group] if the group is deleted successfully
+    */
   def deleteGroupData(
    groupChangeData: GroupChange,
    existingGroup: Group,

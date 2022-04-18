@@ -118,6 +118,13 @@ class DnsBackend(val id: String, val resolver: DNS.SimpleResolver, val xfrInfo: 
       } yield records
     }
 
+  /**
+    * Loads the zone if it's present in the backend
+    *
+    * @param zone The zone to check if it exists
+    * @param maxZoneSize Max size allowed for a zone
+    * @return List of recordsets present in the zone
+    */
   def loadZone(zone: Zone, maxZoneSize: Int): IO[List[RecordSet]] = {
     val dnsZoneName = zoneDnsName(zone.name)
 
@@ -288,6 +295,13 @@ object DnsBackend {
     resolver
   }
 
+  /**
+    * Create TSIG key to enable DNS to authenticate updates to secondary zones.
+    *
+    * @param conn Zone Connection
+    * @param crypto Crypto Secret
+    * @return DNS TSIG Key
+    */
   def createTsig(conn: ZoneConnection, crypto: CryptoAlgebra): DNS.TSIG = {
     val decryptedConnection = conn.decrypted(crypto)
     new DNS.TSIG(
