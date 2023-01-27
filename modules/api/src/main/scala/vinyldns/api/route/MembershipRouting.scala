@@ -47,6 +47,7 @@ class MembershipRoute(
     case GroupAlreadyExistsError(msg) => complete(StatusCodes.Conflict, msg)
     case GroupValidationError(msg) => complete(StatusCodes.BadRequest, msg)
     case InvalidGroupError(msg) => complete(StatusCodes.BadRequest, msg)
+    case EmailNotFoundError(msg) => complete(StatusCodes.NotFound, msg)
     case UserNotFoundError(msg) => complete(StatusCodes.NotFound, msg)
     case InvalidGroupRequestError(msg) => complete(StatusCodes.BadRequest, msg)
   }

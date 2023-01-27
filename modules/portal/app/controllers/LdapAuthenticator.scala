@@ -144,6 +144,41 @@ object LdapAuthenticator {
         Try(dirContext.close())
       }
 
+    def searchEmailContext(
+      dirContext: DirContext,
+      organization: String,
+      lookupEmailAddress: String,
+    ): Either[LdapException, Unit] =
+      try {
+        val searchControls = new SearchControls()
+        searchControls.setSearchScope(2)
+        val filter = s"(&(|(objectClass=group)(objectClass=inetOrgPerson))(mail=$lookupEmailAddress))"
+        logger.info(
+          s"LDAP Search: org='${SEARCH_BASE(organization)}'; emailAddress='$lookupEmailAddress''"
+        )
+
+        val result = dirContext.search(
+          SEARCH_BASE(organization),
+          filter,
+          searchControls
+        )
+
+        if(!Settings.ldapIsEmailCheckEnabled) Right(())
+        else if (result.hasMore) Right(())
+        else Left(EmailDoesNotExistException(s"Email: '$lookupEmailAddress' does not exist in active directory."))
+
+      } catch {
+        case unexpectedError: Throwable =>
+          val errorMessage = new StringWriter
+          unexpectedError.printStackTrace(new PrintWriter(errorMessage))
+          logger.error(
+            s"LDAP Unexpected Error searching for email address; email address='$lookupEmailAddress'. Error: ${errorMessage.toString.replaceAll("\n",";").replaceAll("\t"," ")}"
+          )
+          Left(LdapServiceException(unexpectedError.getMessage))
+      } finally {
+        Try(dirContext.close())
+      }
+
     private[controllers] def authenticate(
         searchDomain: LdapSearchDomain,
         username: String,
@@ -182,6 +217,22 @@ object LdapAuthenticator {
           searchContext(context, searchDomain.organization, user)
         }
     }
+
+    private[controllers] def lookupEmail(
+      searchDomain: LdapSearchDomain,
+      email: String,
+      serviceAccount: ServiceAccount
+    ): Either[LdapException, Unit] = {
+
+      // Email lookup is done using the service account
+      val qualifiedName =
+        if (serviceAccount.domain.isEmpty) serviceAccount.name
+        else s"${serviceAccount.domain}\\${serviceAccount.name}"
+      createContext(qualifiedName, serviceAccount.password)
+        .flatMap { context =>
+          searchEmailContext(context, searchDomain.organization, email)
+        }
+    }
   }
 
   def apply(settings: Settings): Authenticator = {
@@ -208,9 +259,10 @@ object LdapAuthenticator {
   }
 }
 
-sealed abstract class LdapException(message: String) extends Exception(message)
+sealed abstract class LdapException(message: String) extends Throwable(message)
 
 final case class UserDoesNotExistException(message: String) extends LdapException(message)
+final case class EmailDoesNotExistException(message: String) extends LdapException(message)
 final case class LdapServiceException(errorMessage: String)
     extends LdapException(s"Encountered error communicating with LDAP service: $errorMessage")
 final case class InvalidCredentials(username: String)
@@ -274,6 +326,46 @@ class LdapAuthenticator(
         }
     }
 
+  /**
+    * Attempts to search for an email address in specified LDAP domains. Attempts all LDAP domains that are specified in order; in
+    * the event that user details are not found in any of the domains, returns an error based on whether all
+    * LDAP search domains had successful connections (to distinguish between user not existing vs LDAP service being
+    * unreachable)
+    *
+    * @param domains List of domains in LDAP to lookup user
+    * @param emailAddress Email address to lookup
+    * @param f Function from (username, password) => DirContext
+    * @param allDomainConnectionsUp Connectivity to all LDAP domains via the specified provider are up as expected
+    * @return Email address or exception encountered (eg. UserDoesNotExistException or LdapServiceException) depending
+    *         on cause
+    */
+  private def findEmailExist(
+    domains: List[LdapSearchDomain],
+    emailAddress: String,
+    f: LdapSearchDomain => Either[LdapException, Unit],
+    allDomainConnectionsUp: Boolean
+  ): Either[LdapException, Unit] =
+    domains match {
+      case Nil =>
+        if (allDomainConnectionsUp)
+          Left(UserDoesNotExistException(s"Email: '$emailAddress' does not exist in active directory."))
+        else
+          Left(
+            LdapServiceException(
+              "Unable to successfully perform search in at least one LDAP domain"
+            )
+          )
+      case h :: t =>
+        f(h).recoverWith {
+          case _: UserDoesNotExistException =>
+            logger.info(s"email='$emailAddress' not found in search context $h")
+            findEmailExist(t, emailAddress, f, allDomainConnectionsUp)
+          case other =>
+            logger.error(s"Unexpected error while checking if an email exist; email='$emailAddress'", other)
+            findEmailExist(t, emailAddress, f, false)
+        }
+    }
+
   def authenticate(username: String, password: String): Either[LdapException, LdapUserDetails] =
     // Need to check domains here due to recursive nature of findUserDetails
     if (searchBase.isEmpty) Left(NoLdapSearchDomainsConfigured())
@@ -285,6 +377,12 @@ class LdapAuthenticator(
     if (searchBase.isEmpty) Left(NoLdapSearchDomainsConfigured())
     else
       findUserDetails(searchBase, username, authenticator.lookup(_, username, serviceAccount), true)
+
+
+  def emailLookup(emailAddress: String): Either[Throwable, Unit] =
+  // Need to check domains here due to recursive nature of findUserDetails
+    if (searchBase.isEmpty) Left(NoLdapSearchDomainsConfigured())
+    else findEmailExist(searchBase, emailAddress, authenticator.lookupEmail(_, emailAddress, serviceAccount), true)
 
   def healthCheck(): HealthCheck =
     IO {
@@ -312,6 +410,7 @@ class LdapAuthenticator(
 trait Authenticator {
   def authenticate(username: String, password: String): Either[LdapException, LdapUserDetails]
   def lookup(username: String): Either[LdapException, LdapUserDetails]
+  def emailLookup(emailAddress: String): Either[Throwable, Unit]
   def getUsersNotInLdap(usernames: List[User]): IO[List[User]]
   def healthCheck(): HealthCheck
 }
@@ -364,6 +463,13 @@ class TestAuthenticator(authenticator: Authenticator) extends Authenticator {
 
   def getUsersNotInLdap(users: List[User]): IO[List[User]] =
     authenticator.getUsersNotInLdap(users)
+
+  def emailLookup(emailAddress: String): Either[Throwable, Unit] =
+    emailAddress match {
+      case "test@test.com" => Right(())
+      case "new@test.com" => Right(())
+      case _ => authenticator.emailLookup(emailAddress)
+    }
 }
 
 case class LdapSearchDomain(organization: String, domainName: String)

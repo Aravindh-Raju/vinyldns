@@ -28,6 +28,7 @@ import vinyldns.core.domain.membership._
 import vinyldns.core.domain.record.RecordSetRepository
 import vinyldns.core.Messages._
 import vinyldns.mysql.TransactionProvider
+import controllers.{Authenticator, LdapAuthenticator, Settings}
 
 object MembershipService {
   def apply(dataAccessor: ApiDataAccessor): MembershipService =
@@ -52,12 +53,16 @@ class MembershipService(
 
   import MembershipValidations._
 
+  private def authenticator(): Authenticator =
+    LdapAuthenticator(Settings)
+
   def createGroup(inputGroup: Group, authPrincipal: AuthPrincipal): Result[Group] = {
     val newGroup = inputGroup.addAdminUser(authPrincipal.signedInUser)
     val adminMembers = inputGroup.adminUserIds
     val nonAdminMembers = inputGroup.memberIds.diff(adminMembers)
     for {
       _ <- groupValidation(newGroup)
+      _ <- checkIfEmailExists(inputGroup.email)
       _ <- hasMembersAndAdmins(newGroup).toResult
       _ <- groupWithSameNameDoesNotExist(newGroup.name)
       _ <- usersExist(newGroup.memberIds)
@@ -78,6 +83,7 @@ class MembershipService(
       existingGroup <- getExistingGroup(groupId)
       newGroup = existingGroup.withUpdates(name, email, description, memberIds, adminUserIds)
       _ <- groupValidation(newGroup)
+      _ <- checkIfEmailExists(newGroup.email)
       _ <- canEditGroup(existingGroup, authPrincipal).toResult
       addedAdmins = newGroup.adminUserIds.diff(existingGroup.adminUserIds)
       // new non-admin members ++ admins converted to non-admins
@@ -382,6 +388,13 @@ class MembershipService(
         ().asRight
       else
         UserNotFoundError(s"Users [ ${delta.mkString(",")} ] were not found").asLeft
+    }
+  }.toResult
+
+  def checkIfEmailExists(email: String): Result[Unit] = {
+    authenticator().emailLookup(email) match {
+      case Left(value) => EmailNotFoundError(value.getMessage).asLeft
+      case Right(_) => ().asRight
     }
   }.toResult
 

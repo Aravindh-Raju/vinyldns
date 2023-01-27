@@ -98,7 +98,8 @@ lazy val api = (project in file("modules/api"))
     core % "compile->compile;test->test",
     mysql % "compile->compile;it->it",
     sqs % "compile->compile;it->it",
-    r53 % "compile->compile;it->it"
+    r53 % "compile->compile;it->it",
+    portal
   )
 
 lazy val root = (project in file("."))

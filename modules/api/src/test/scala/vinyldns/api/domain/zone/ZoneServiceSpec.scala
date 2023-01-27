@@ -17,7 +17,7 @@
 package vinyldns.api.domain.zone
 
 import org.mockito.Matchers.{any, anyString}
-import org.mockito.Mockito.{doReturn, reset}
+import org.mockito.Mockito.{doReturn, reset, spy}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
@@ -67,7 +67,7 @@ class ZoneServiceSpec
     }
   }
 
-  private val underTest = new ZoneService(
+  private val underTest = spy(new ZoneService(
     mockZoneRepo,
     mockGroupRepo,
     mockUserRepo,
@@ -78,7 +78,7 @@ class ZoneServiceSpec
     new AccessValidations(),
     mockBackendResolver,
     NoOpCrypto.instance
-  )
+  ))
 
   private val createZoneAuthorized = CreateZoneInput(
     "ok.zone.recordsets.",
@@ -90,7 +90,7 @@ class ZoneServiceSpec
   private val updateZoneAuthorized = UpdateZoneInput(
     okZone.id,
     "ok.zone.recordsets.",
-    "updated-test@test.com",
+    "new@test.com",
     connection = testConnection,
     adminGroupId = okGroup.id
   )
@@ -147,6 +147,16 @@ class ZoneServiceSpec
           .value.unsafeRunSync().toOption.get
 
       resultChange.zone.isTest shouldBe true
+    }
+
+    "return a EmailNotFoundError if the zone email doesn't exist in ldap" in {
+      doReturn(result(EmailNotFoundError("Email: 'new.email' does not exist in active directory.")))
+        .when(underTest)
+        .checkIfEmailExists(createZoneAuthorized.copy(email = "new.email").email)
+
+      val error = underTest.connectToZone(createZoneAuthorized.copy(email = "new.email"), okAuth).value.unsafeRunSync().swap.toOption.get
+
+      error shouldBe a[EmailNotFoundError]
     }
 
     "return a ZoneAlreadyExists error if the zone exists" in {
@@ -249,6 +259,15 @@ class ZoneServiceSpec
       resultChange.changeType shouldBe ZoneChangeType.Update
       resultChange.zone.adminGroupId shouldBe updateZoneInput.adminGroupId
       resultChange.zone.adminGroupId should not be updateZoneAuthorized.adminGroupId
+    }
+
+    "return a EmailNotFoundError if the updated zone email doesn't exist in ldap" in {
+      doReturn(result(EmailNotFoundError("Email: 'new.email' does not exist in active directory.")))
+        .when(underTest)
+        .checkIfEmailExists(updateZoneAuthorized.copy(email = "new.email").email)
+      val error = underTest.updateZone(updateZoneAuthorized.copy(email = "new.email"), okAuth).value.unsafeRunSync().swap.toOption.get
+
+      error shouldBe a[EmailNotFoundError]
     }
 
     "not validate connection if unchanged" in {

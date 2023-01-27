@@ -81,6 +81,22 @@ def test_create_group_without_name(shared_zone_test_context):
     assert_that(errors[0], is_("Missing Group.name"))
 
 
+def test_create_group_with_non_ldap_email_fails(shared_zone_test_context):
+    """
+    Tests that creating a group with an email which doesn't exist in ldap fails
+    """
+    client = shared_zone_test_context.ok_vinyldns_client
+
+    new_group = {
+        "email": "trial@dummy.com",
+        "description": "this is a description",
+        "members": [{"id": "ok"}],
+        "admins": [{"id": "ok"}]
+    }
+    error = client.create_group(new_group, status=400)
+    assert_that(error, is_("Email: 'trial@dummy.com' does not exist in active directory."))
+
+
 def test_create_group_without_email(shared_zone_test_context):
     """
     Tests that creating a group without an email fails

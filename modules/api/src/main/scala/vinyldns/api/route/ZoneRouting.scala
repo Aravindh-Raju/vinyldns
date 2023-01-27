@@ -31,12 +31,12 @@ case class GetZoneResponse(zone: ZoneInfo)
 case class ZoneRejected(zone: Zone, errors: List[String])
 
 class ZoneRoute(
-    zoneService: ZoneServiceAlgebra,
-    limitsConfig: LimitsConfig,
-    val vinylDNSAuthenticator: VinylDNSAuthenticator,
-    crypto: CryptoAlgebra
-) extends VinylDNSJsonProtocol
-    with VinylDNSDirectives[Throwable] {
+                 zoneService: ZoneServiceAlgebra,
+                 limitsConfig: LimitsConfig,
+                 val vinylDNSAuthenticator: VinylDNSAuthenticator,
+                 crypto: CryptoAlgebra
+               ) extends VinylDNSJsonProtocol
+  with VinylDNSDirectives[Throwable] {
 
   def getRoutes: Route = zoneRoute
 
@@ -56,6 +56,7 @@ class ZoneRoute(
     case NotAuthorizedError(msg) => complete(StatusCodes.Forbidden, msg)
     case InvalidGroupError(msg) => complete(StatusCodes.BadRequest, msg)
     case ZoneNotFoundError(msg) => complete(StatusCodes.NotFound, msg)
+    case EmailNotFoundError(msg) => complete(StatusCodes.NotFound, msg)
     case ZoneUnavailableError(msg) => complete(StatusCodes.Conflict, msg)
     case InvalidSyncStateError(msg) => complete(StatusCodes.BadRequest, msg)
     case PendingUpdateError(msg) => complete(StatusCodes.Conflict, msg)
@@ -82,27 +83,27 @@ class ZoneRoute(
           "ignoreAccess".as[Boolean].?(false)
         ) {
           (
-              nameFilter: Option[String],
-              startFrom: Option[String],
-              maxItems: Int,
-              searchByAdminGroup: Boolean,
-              ignoreAccess: Boolean
+            nameFilter: Option[String],
+            startFrom: Option[String],
+            maxItems: Int,
+            searchByAdminGroup: Boolean,
+            ignoreAccess: Boolean
           ) =>
-            {
-              handleRejections(invalidQueryHandler) {
-                validate(
-                  0 < maxItems && maxItems <= MAX_ITEMS_LIMIT,
-                  s"maxItems was $maxItems, maxItems must be between 0 and $MAX_ITEMS_LIMIT"
-                ) {
-                  authenticateAndExecute(
-                    zoneService
-                      .listZones(_, nameFilter, startFrom, maxItems, searchByAdminGroup, ignoreAccess)
-                  ) { result =>
-                    complete(StatusCodes.OK, result)
-                  }
+          {
+            handleRejections(invalidQueryHandler) {
+              validate(
+                0 < maxItems && maxItems <= MAX_ITEMS_LIMIT,
+                s"maxItems was $maxItems, maxItems must be between 0 and $MAX_ITEMS_LIMIT"
+              ) {
+                authenticateAndExecute(
+                  zoneService
+                    .listZones(_, nameFilter, startFrom, maxItems, searchByAdminGroup, ignoreAccess)
+                ) { result =>
+                  complete(StatusCodes.OK, result)
                 }
               }
             }
+          }
         }
       }
   } ~

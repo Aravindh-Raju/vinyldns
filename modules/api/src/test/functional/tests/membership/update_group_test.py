@@ -85,6 +85,38 @@ def test_update_group_without_name(shared_zone_test_context):
             client.delete_group(result["id"], status=(200, 404))
 
 
+def test_update_group_with_non_ldap_email_fails(shared_zone_test_context):
+    """
+    Tests that updating a group with an email which doesn't exist in ldap fails
+    """
+    client = shared_zone_test_context.ok_vinyldns_client
+    result = None
+    try:
+        new_group = {
+            "name": "test-update-group",
+            "email": "test@test.com",
+            "description": "this is a description",
+            "members": [{"id": "ok"}],
+            "admins": [{"id": "ok"}]
+        }
+        result = client.create_group(new_group, status=200)
+        assert_that(result["name"], is_(new_group["name"]))
+        assert_that(result["email"], is_(new_group["email"]))
+
+        update_group = {
+            "id": result["id"],
+            "name": "test-update-group",
+            "email": "update@test.com",
+            "description": "this is a new description"
+        }
+
+        error = client.update_group(update_group["id"], update_group, status=400)
+        assert_that(error, is_("Email: 'update@test.com' does not exist in active directory."))
+    finally:
+        if result:
+            client.delete_group(result["id"], status=(200, 404))
+
+
 def test_update_group_without_email(shared_zone_test_context):
     """
     Tests that updating a group without an email fails

@@ -272,6 +272,8 @@ case class ListZonesResponse(
 // Errors
 case class InvalidRequest(msg: String) extends Throwable(msg)
 
+case class EmailNotFoundError(msg: String) extends Throwable(msg)
+
 case class UnrecognizedRequest(msg: String) extends Throwable(msg)
 
 case class RecordSetAlreadyExists(msg: String) extends Throwable(msg)

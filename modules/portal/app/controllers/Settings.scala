@@ -46,6 +46,7 @@ class Settings(private val config: Configuration) {
   val ldapProviderUrl: URI = new URI(config.get[String]("LDAP.context.providerUrl"))
   val ldapUserNameAttribute: String =
     config.getOptional[String]("LDAP.userNameAttribute").getOrElse("sAMAccountName")
+  val ldapIsEmailCheckEnabled: Boolean = config.getOptional[Boolean]("LDAP.isEmailCheckEnabled").getOrElse(false)
 
   val ldapSyncEnabled: Boolean =
     config.getOptional[Boolean]("LDAP.user-sync.enabled").getOrElse(false)

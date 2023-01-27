@@ -18,6 +18,7 @@ package vinyldns.api.domain.zone
 
 import cats.effect.IO
 import cats.implicits._
+import controllers.{Authenticator, LdapAuthenticator, Settings}
 import vinyldns.api.domain.access.AccessValidationsAlgebra
 import vinyldns.api.Interfaces
 import vinyldns.core.domain.auth.AuthPrincipal
@@ -70,11 +71,16 @@ class ZoneService(
   import zoneValidations._
   import Interfaces._
 
+
+  private def authenticator(): Authenticator =
+    LdapAuthenticator(Settings)
+
   def connectToZone(
       createZoneInput: CreateZoneInput,
       auth: AuthPrincipal
   ): Result[ZoneCommandResult] =
     for {
+      _ <- checkIfEmailExists(createZoneInput.email)
       _ <- isValidZoneAcl(createZoneInput.acl).toResult
       _ <- connectionValidator.isValidBackendId(createZoneInput.backendId).toResult
       _ <- validateSharedZoneAuthorized(createZoneInput.shared, auth.signedInUser).toResult
@@ -89,6 +95,7 @@ class ZoneService(
 
   def updateZone(updateZoneInput: UpdateZoneInput, auth: AuthPrincipal): Result[ZoneCommandResult] =
     for {
+      _ <- checkIfEmailExists(updateZoneInput.email)
       _ <- isValidZoneAcl(updateZoneInput.acl).toResult
       _ <- connectionValidator.isValidBackendId(updateZoneInput.backendId).toResult
       existingZone <- getZoneOrFail(updateZoneInput.id)
@@ -324,6 +331,13 @@ class ZoneService(
     } else {
       ().toResult
     }
+
+  def checkIfEmailExists(email: String): Result[Unit] = {
+    authenticator().emailLookup(email) match {
+      case Left(value) => EmailNotFoundError(value.getMessage).asLeft
+      case Right(_) => ().asRight
+    }
+  }.toResult
 
   def getZoneAclDisplay(zoneAcl: ZoneACL): Result[ZoneACLInfo] = {
     val (withUserId, without) = zoneAcl.rules.partition(_.userId.isDefined)

@@ -82,7 +82,7 @@ class MembershipServiceSpec
   // the update will remove users 3 and 4, add users 5 and 6, as well as a new admin user 7 and remove user2 as admin
   private val updatedInfo = Group(
     name = "new.name",
-    email = "new.email",
+    email = "new@test.com",
     description = Some("new desc"),
     id = "id",
     memberIds = Set("user1", "user2", "user5", "user6", "user7"),
@@ -209,6 +209,19 @@ class MembershipServiceSpec
         result.memberIds should contain(okAuth.userId)
       }
 
+      "return an error if the group email doesn't exist in ldap" in {
+        doReturn(result(EmailNotFoundError("Email: 'new.email' does not exist in active directory.")))
+          .when(underTest)
+          .checkIfEmailExists(groupInfo.copy(email = "new.email").email)
+
+        val error = underTest.createGroup(groupInfo.copy(email = "new.email"), okAuth).value.unsafeRunSync().swap.toOption.get
+        error shouldBe a[EmailNotFoundError]
+
+        verify(mockGroupRepo, never()).save(any[DB], any[Group])
+        verify(mockMembershipRepo, never())
+          .saveMembers(any[DB], anyString, any[Set[String]], isAdmin = anyBoolean)
+      }
+
       "return an error if a group with the same name exists" in {
         doReturn(IO.pure(Some(okUser))).when(mockUserRepo).getUser("ok")
         doReturn(result(GroupAlreadyExistsError("fail")))
@@ -302,17 +315,17 @@ class MembershipServiceSpec
           .when(mockGroupChangeRepo)
           .save(any[DB], any[GroupChange])
 
-          underTest
-            .updateGroup(
-              updatedInfo.id,
-              updatedInfo.name,
-              updatedInfo.email,
-              updatedInfo.description,
-              updatedInfo.memberIds,
-              updatedInfo.adminUserIds,
-              okAuth
-            )
-            .value.unsafeRunSync()
+        underTest
+          .updateGroup(
+            updatedInfo.id,
+            updatedInfo.name,
+            updatedInfo.email,
+            updatedInfo.description,
+            updatedInfo.memberIds,
+            updatedInfo.adminUserIds,
+            okAuth
+          )
+          .value.unsafeRunSync()
 
         val groupCaptor = ArgumentCaptor.forClass(classOf[Group])
         val addedMemberCaptor = ArgumentCaptor.forClass(classOf[Set[String]])
@@ -357,6 +370,28 @@ class MembershipServiceSpec
         groupChange.newGroup shouldBe savedGroup
         groupChange.oldGroup shouldBe Some(existingGroup)
         groupChange.userId shouldBe okAuth.userId
+      }
+
+      "return an error if the updated group email doesn't exist in ldap" in {
+        doReturn(IO.pure(Some(okGroup))).when(mockGroupRepo).getGroup(anyString)
+        doReturn(result(EmailNotFoundError("Email: 'new.email' does not exist in active directory.")))
+          .when(underTest)
+          .checkIfEmailExists(updatedInfo.copy(email = "new.email").email)
+
+        val error =
+          underTest
+            .updateGroup(
+              updatedInfo.id,
+              updatedInfo.name,
+              updatedInfo.copy(email = "new.email").email,
+              updatedInfo.description,
+              updatedInfo.memberIds,
+              updatedInfo.adminUserIds,
+              dummyAuth
+            )
+            .value.unsafeRunSync().swap.toOption.get
+
+        error shouldBe a[EmailNotFoundError]
       }
 
       "return an error if the user is not an admin" in {
@@ -857,31 +892,31 @@ class MembershipServiceSpec
         result.startFrom shouldBe None
       }
 
-    "return group activity even if the user is not authorized" in {
-      val groupChangeRepoResponse = ListGroupChangesResults(
-        listOfDummyGroupChanges.take(100),
-        Some(listOfDummyGroupChanges(100).id)
-      )
-      doReturn(IO.pure(groupChangeRepoResponse))
-        .when(mockGroupChangeRepo)
-        .getGroupChanges(anyString, any[Option[String]], anyInt)
+      "return group activity even if the user is not authorized" in {
+        val groupChangeRepoResponse = ListGroupChangesResults(
+          listOfDummyGroupChanges.take(100),
+          Some(listOfDummyGroupChanges(100).id)
+        )
+        doReturn(IO.pure(groupChangeRepoResponse))
+          .when(mockGroupChangeRepo)
+          .getGroupChanges(anyString, any[Option[String]], anyInt)
 
-      doReturn(IO.pure(ListUsersResults(Seq(dummyUser), Some("1"))))
-        .when(mockUserRepo)
-        .getUsers(any[Set[String]], any[Option[String]], any[Option[Int]])
+        doReturn(IO.pure(ListUsersResults(Seq(dummyUser), Some("1"))))
+          .when(mockUserRepo)
+          .getUsers(any[Set[String]], any[Option[String]], any[Option[Int]])
 
-      val userMap = Seq(dummyUser).map(u => (u.id, u.userName)).toMap
-      val expected: List[GroupChangeInfo] =
-        listOfDummyGroupChanges.map(change => GroupChangeInfo.apply(change.copy(userName = userMap.get(change.userId)))).take(100)
+        val userMap = Seq(dummyUser).map(u => (u.id, u.userName)).toMap
+        val expected: List[GroupChangeInfo] =
+          listOfDummyGroupChanges.map(change => GroupChangeInfo.apply(change.copy(userName = userMap.get(change.userId)))).take(100)
 
-      val result: ListGroupChangesResponse =
-        underTest.getGroupActivity(dummyGroup.id, None, 100, okAuth).value.unsafeRunSync().toOption.get
-      result.changes should contain theSameElementsAs expected
-      result.maxItems shouldBe 100
-      result.nextId shouldBe Some(listOfDummyGroupChanges(100).id)
-      result.startFrom shouldBe None
+        val result: ListGroupChangesResponse =
+          underTest.getGroupActivity(dummyGroup.id, None, 100, okAuth).value.unsafeRunSync().toOption.get
+        result.changes should contain theSameElementsAs expected
+        result.maxItems shouldBe 100
+        result.nextId shouldBe Some(listOfDummyGroupChanges(100).id)
+        result.startFrom shouldBe None
+      }
     }
-  }
 
     "determine group difference" should {
       "return difference between two groups" in {

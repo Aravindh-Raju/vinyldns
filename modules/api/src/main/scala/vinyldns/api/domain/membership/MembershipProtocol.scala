@@ -27,15 +27,15 @@ import vinyldns.core.domain.membership._
 
 /* This is the new View model for Groups, do not surface the Group model directly any more */
 final case class GroupInfo(
-    id: String,
-    name: String,
-    email: String,
-    description: Option[String] = None,
-    created: Instant = Instant.now.truncatedTo(ChronoUnit.MILLIS),
-    status: GroupStatus = GroupStatus.Active,
-    members: Set[UserId] = Set.empty,
-    admins: Set[UserId] = Set.empty
-)
+                            id: String,
+                            name: String,
+                            email: String,
+                            description: Option[String] = None,
+                            created: Instant = Instant.now.truncatedTo(ChronoUnit.MILLIS),
+                            status: GroupStatus = GroupStatus.Active,
+                            members: Set[UserId] = Set.empty,
+                            admins: Set[UserId] = Set.empty
+                          )
 object GroupInfo {
   def apply(group: Group): GroupInfo = fromGroup(group, abridged = false, None)
 
@@ -48,22 +48,22 @@ object GroupInfo {
     created = if (abridged) null else group.created,
     status = if (abridged) null else group.status,
     members = (if (abridged && authPrincipal.isDefined) group.memberIds.filter(x => authPrincipal.get.userId == x && authPrincipal.get.isGroupMember(group.id))
-              else group.memberIds).map(UserId),
+    else group.memberIds).map(UserId),
     admins = (if (abridged && authPrincipal.isDefined) group.adminUserIds.filter(x => authPrincipal.get.userId == x && authPrincipal.get.isGroupAdmin(group))
-              else group.adminUserIds).map(UserId)
+    else group.adminUserIds).map(UserId)
   )
 }
 
 final case class GroupChangeInfo(
-    newGroup: GroupInfo,
-    changeType: GroupChangeType,
-    userId: String,
-    oldGroup: Option[GroupInfo] = None,
-    id: String = UUID.randomUUID().toString,
-    created: Instant = Instant.now.truncatedTo(ChronoUnit.MILLIS),
-    userName: String,
-    groupChangeMessage: String
-)
+                                  newGroup: GroupInfo,
+                                  changeType: GroupChangeType,
+                                  userId: String,
+                                  oldGroup: Option[GroupInfo] = None,
+                                  id: String = UUID.randomUUID().toString,
+                                  created: Instant = Instant.now.truncatedTo(ChronoUnit.MILLIS),
+                                  userName: String,
+                                  groupChangeMessage: String
+                                )
 
 object GroupChangeInfo {
   def apply(groupChange: GroupChange): GroupChangeInfo = GroupChangeInfo(
@@ -81,14 +81,14 @@ object GroupChangeInfo {
 case class UserId(id: String)
 
 case class UserInfo(
-    id: String,
-    userName: Option[String] = None,
-    firstName: Option[String] = None,
-    lastName: Option[String] = None,
-    email: Option[String] = None,
-    created: Option[Instant] = None,
-    lockStatus: LockStatus
-)
+                     id: String,
+                     userName: Option[String] = None,
+                     firstName: Option[String] = None,
+                     lastName: Option[String] = None,
+                     email: Option[String] = None,
+                     created: Option[Instant] = None,
+                     lockStatus: LockStatus
+                   )
 object UserInfo {
   def apply(user: User): UserInfo =
     UserInfo(
@@ -103,9 +103,9 @@ object UserInfo {
 }
 
 case class UserResponseInfo(
-   id: String,
-   userName: Option[String] = None
- )
+                             id: String,
+                             userName: Option[String] = None
+                           )
 
 object UserResponseInfo {
   def apply(user: User): UserResponseInfo =
@@ -116,15 +116,15 @@ object UserResponseInfo {
 }
 
 case class MemberInfo(
-    id: String,
-    userName: Option[String] = None,
-    firstName: Option[String] = None,
-    lastName: Option[String] = None,
-    email: Option[String] = None,
-    created: Option[Instant] = None,
-    isAdmin: Boolean = false,
-    lockStatus: LockStatus
-)
+                       id: String,
+                       userName: Option[String] = None,
+                       firstName: Option[String] = None,
+                       lastName: Option[String] = None,
+                       email: Option[String] = None,
+                       created: Option[Instant] = None,
+                       isAdmin: Boolean = false,
+                       lockStatus: LockStatus
+                     )
 
 object MemberInfo {
   def apply(user: User, group: Group): MemberInfo =
@@ -141,36 +141,36 @@ object MemberInfo {
 }
 
 final case class ListMembersResponse(
-    members: Seq[MemberInfo],
-    startFrom: Option[String] = None,
-    nextId: Option[String] = None,
-    maxItems: Int
-)
+                                      members: Seq[MemberInfo],
+                                      startFrom: Option[String] = None,
+                                      nextId: Option[String] = None,
+                                      maxItems: Int
+                                    )
 
 final case class ListUsersResponse(
-    members: Seq[UserInfo],
-    startFrom: Option[String] = None,
-    nextId: Option[String] = None,
-    maxItems: Int
-)
+                                    members: Seq[UserInfo],
+                                    startFrom: Option[String] = None,
+                                    nextId: Option[String] = None,
+                                    maxItems: Int
+                                  )
 
 final case class ListAdminsResponse(admins: Seq[UserInfo])
 
 final case class ListGroupChangesResponse(
-    changes: Seq[GroupChangeInfo],
-    startFrom: Option[String] = None,
-    nextId: Option[String] = None,
-    maxItems: Int
-)
+                                           changes: Seq[GroupChangeInfo],
+                                           startFrom: Option[String] = None,
+                                           nextId: Option[String] = None,
+                                           maxItems: Int
+                                         )
 
 final case class ListMyGroupsResponse(
-    groups: Seq[GroupInfo],
-    groupNameFilter: Option[String] = None,
-    startFrom: Option[String] = None,
-    nextId: Option[String] = None,
-    maxItems: Int,
-    ignoreAccess: Boolean
-)
+                                       groups: Seq[GroupInfo],
+                                       groupNameFilter: Option[String] = None,
+                                       startFrom: Option[String] = None,
+                                       nextId: Option[String] = None,
+                                       maxItems: Int,
+                                       ignoreAccess: Boolean
+                                     )
 
 final case class GroupNotFoundError(msg: String) extends Throwable(msg)
 
@@ -179,6 +179,8 @@ final case class GroupAlreadyExistsError(msg: String) extends Throwable(msg)
 final case class GroupValidationError(msg: String) extends Throwable(msg)
 
 final case class UserNotFoundError(msg: String) extends Throwable(msg)
+
+final case class EmailNotFoundError(msg: String) extends Throwable(msg)
 
 final case class InvalidGroupError(msg: String) extends Throwable(msg)
 

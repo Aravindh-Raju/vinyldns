@@ -95,6 +95,25 @@ def test_create_zone_success(shared_zone_test_context):
             client.abandon_zones([result_zone["id"]], status=202)
 
 
+@pytest.mark.serial
+def test_create_zone_with_non_ldap_email_fails(shared_zone_test_context):
+    """
+    Tests that creating a zone with an email which doesn't exist in ldap fails
+    """
+    client = shared_zone_test_context.ok_vinyldns_client
+    # Include a space in the zone name to verify that it is trimmed and properly formatted
+    zone_name = f"one-time{shared_zone_test_context.partition_id} "
+
+    zone = {
+        "name": zone_name,
+        "email": "trial@dummy.com",
+        "adminGroupId": shared_zone_test_context.ok_group["id"],
+        "backendId": "func-test-backend"
+    }
+    error = client.create_zone(zone, status=400)
+    assert_that(error, is_("Email: 'trial@dummy.com' does not exist in active directory."))
+
+
 @pytest.mark.skip_production
 def test_create_zone_without_transfer_connection_leaves_it_empty(shared_zone_test_context):
     """
