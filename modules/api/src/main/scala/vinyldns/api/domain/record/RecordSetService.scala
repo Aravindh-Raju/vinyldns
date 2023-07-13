@@ -688,7 +688,10 @@ class RecordSetService(
                              zone: Zone,
                              recordSet: RecordSet,
                              validateRecordLookupAgainstDnsBackend: Boolean
-                           ): Result[Unit] =
+                           ): Result[Unit] = {
+    val records = backendConnection(zone)
+      .resolve(recordSet.name, zone.name, recordSet.typ)
+    println("records: ", records.unsafeRunSync())
     recordSetDoesNotExistInDatabase(recordSet, zone).value.flatMap {
       case Left(recordSetAlreadyExists: RecordSetAlreadyExists)
         if validateRecordLookupAgainstDnsBackend =>
@@ -703,6 +706,7 @@ class RecordSetService(
           }
       case result => IO(result)
     }.toResult
+  }
 
   def isUniqueUpdate(
                       backendConnection: Zone => Backend,

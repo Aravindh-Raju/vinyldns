@@ -18,11 +18,7 @@ package vinyldns.route53.backend
 
 import cats.data.OptionT
 import cats.effect.IO
-import com.amazonaws.auth.{
-  AWSStaticCredentialsProvider,
-  BasicAWSCredentials,
-  DefaultAWSCredentialsProviderChain
-}
+import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicSessionCredentials, DefaultAWSCredentialsProviderChain}
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.handlers.AsyncHandler
 import com.amazonaws.services.route53.{AmazonRoute53Async, AmazonRoute53AsyncClientBuilder}
@@ -286,7 +282,7 @@ object Route53Backend {
         .map {
           case (key, secret) =>
             new AWSStaticCredentialsProvider(
-              new BasicAWSCredentials(key, secret)
+              new BasicSessionCredentials(key, secret, "YOUR_SESSION_TOKEN_IN_AWS_CONFIG_FILE")
             )
         }
         .headOption
