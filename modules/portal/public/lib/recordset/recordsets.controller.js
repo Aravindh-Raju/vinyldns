@@ -74,7 +74,7 @@
             $scope.userCanAccessGroup = false;
 
              // paging status for record changes
-             var changePaging = pagingService.getNewPagingParams(2);
+             var changePaging = pagingService.getNewPagingParams(100);
 
             // paging status for recordsets
             var recordsPaging = pagingService.getNewPagingParams(100);
