@@ -31,6 +31,7 @@
             $scope.groups = [];
             $scope.recordFqdn = undefined;
             $scope.recordType = undefined;
+            $scope.recordZoneId = undefined;
             $scope.recordsetChanges = {};
             $scope.currentRecord = {};
             $scope.zoneInfo = {};
@@ -73,7 +74,7 @@
             $scope.userCanAccessGroup = false;
 
              // paging status for record changes
-             var changePaging = pagingService.getNewPagingParams(100);
+             var changePaging = pagingService.getNewPagingParams(2);
 
             // paging status for recordsets
             var recordsPaging = pagingService.getNewPagingParams(100);
@@ -113,10 +114,11 @@
                           .append("<div>" + recordSet + "</div>")
                           .appendTo(ul); };
 
-            $scope.viewRecordHistory = function(recordFqdn, recordType) {
+            $scope.viewRecordHistory = function(recordFqdn, recordType, zoneId) {
                $scope.recordFqdn = recordFqdn;
                $scope.recordType = recordType;
-               $scope.refreshRecordChangeHistory($scope.recordFqdn, $scope.recordType);
+               $scope.recordZoneId = zoneId;
+               $scope.refreshRecordChangeHistory($scope.recordFqdn, $scope.recordType, $scope.recordZoneId);
                $("#record_history_modal").modal("show");
             };
 
@@ -245,7 +247,7 @@
                     });
             };
 
-            $scope.refreshRecordChangeHistory = function(recordFqdn, recordType) {
+            $scope.refreshRecordChangeHistory = function(recordFqdn, recordType, zoneId) {
                 changePaging = pagingService.resetPaging(changePaging);
                 function success(response) {
                     $scope.zoneId = response.data.zoneId;
@@ -254,7 +256,7 @@
                     updateChangeDisplay(response.data.recordSetChanges)
                 }
                 return recordsService
-                    .listRecordSetChangeHistory(changePaging.maxItems, undefined, recordFqdn, recordType)
+                    .listRecordSetChangeHistory(changePaging.maxItems, undefined, recordFqdn, recordType, zoneId)
                     .then(success)
                     .catch(function (error){
                         handleError(error, 'recordsService::getRecordSetChangeHistory-failure');
@@ -276,7 +278,7 @@
             $scope.changeHistoryPrevPage = function() {
                 var startFrom = pagingService.getPrevStartFrom(changePaging);
                 return recordsService
-                    .listRecordSetChangeHistory(changePaging.maxItems, startFrom, $scope.recordFqdn, $scope.recordType)
+                    .listRecordSetChangeHistory(changePaging.maxItems, startFrom, $scope.recordFqdn, $scope.recordType, $scope.recordZoneId)
                     .then(function(response) {
                         changePaging = pagingService.prevPageUpdate(response.data.nextId, changePaging);
                         updateChangeDisplay(response.data.recordSetChanges);
@@ -288,7 +290,7 @@
 
             $scope.changeHistoryNextPage = function() {
                 return recordsService
-                    .listRecordSetChangeHistory(changePaging.maxItems, changePaging.next, $scope.recordFqdn, $scope.recordType)
+                    .listRecordSetChangeHistory(changePaging.maxItems, changePaging.next, $scope.recordFqdn, $scope.recordType, $scope.recordZoneId)
                     .then(function(response) {
                         var changes = response.data.recordSetChanges;
                         changePaging = pagingService.nextPageUpdate(changes, response.data.nextId, changePaging);

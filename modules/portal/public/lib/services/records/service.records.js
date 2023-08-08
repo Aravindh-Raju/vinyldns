@@ -120,13 +120,14 @@ angular.module('service.records', [])
             return $http.get(url);
         };
 
-        this.listRecordSetChangeHistory = function (maxItems, startFrom, fqdn, recordType) {
+        this.listRecordSetChangeHistory = function (maxItems, startFrom, fqdn, recordType, zoneId) {
             var url = '/api/recordsetchange/history';
             var params = {
                 "maxItems": maxItems,
                 "startFrom": startFrom,
                 "fqdn": fqdn,
-                "recordType": recordType
+                "recordType": recordType,
+                "zoneId": zoneId
             };
             url = utilityService.urlBuilder(url, params);
             return $http.get(url);

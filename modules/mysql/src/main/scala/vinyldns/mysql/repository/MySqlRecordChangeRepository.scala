@@ -23,7 +23,6 @@ import vinyldns.core.domain.record.RecordType.RecordType
 import vinyldns.core.domain.record._
 import vinyldns.core.protobuf.ProtobufConversions
 import vinyldns.core.route.Monitored
-import vinyldns.mysql.repository.MySqlRecordSetRepository.fromRecordType
 import vinyldns.proto.VinylDNSProto
 
 class MySqlRecordChangeRepository
@@ -39,24 +38,6 @@ class MySqlRecordChangeRepository
       | WHERE zone_id = {zoneId}
       | ORDER BY created DESC
       | LIMIT {limit} OFFSET {startFrom}
-    """.stripMargin
-
-  private val LIST_CHANGES_WITH_START_FQDN_TYPE =
-    sql"""
-       |SELECT data
-       | FROM record_change
-       | WHERE fqdn = {fqdn} AND record_type = {type}
-       | ORDER BY created DESC
-       | LIMIT {limit} OFFSET {startFrom}
-    """.stripMargin
-
-  private val LIST_CHANGES_WITHOUT_START_FQDN_TYPE =
-    sql"""
-         |SELECT data
-         | FROM record_change
-         | WHERE fqdn = {fqdn} AND record_type = {type}
-         | ORDER BY created DESC
-         | LIMIT {limit}
     """.stripMargin
 
   private val LIST_RECORD_CHANGES =
@@ -83,7 +64,7 @@ class MySqlRecordChangeRepository
     """.stripMargin
 
   private val INSERT_CHANGES =
-    sql"INSERT IGNORE INTO record_change (id, zone_id, created, type, fqdn, record_type, data) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    sql"INSERT IGNORE INTO record_change (id, zone_id, created, type, data) VALUES (?, ?, ?, ?, ?)"
 
   /**
     * We have the same issue with changes as record sets, namely we may have to save millions of them
@@ -102,8 +83,6 @@ class MySqlRecordChangeRepository
                   change.zoneId,
                   change.created.toEpochMilli,
                   fromChangeType(change.changeType),
-                  if(change.recordSet.name == change.zone.name) change.zone.name else change.recordSet.name + "." + change.zone.name,
-                  fromRecordType(change.recordSet.typ),
                   toPB(change).toByteArray,
                 )
               }
@@ -126,14 +105,28 @@ class MySqlRecordChangeRepository
       IO {
         DB.readOnly { implicit s =>
           val changes = if(startFrom.isDefined && fqdn.isDefined && recordType.isDefined){
-          LIST_CHANGES_WITH_START_FQDN_TYPE
-            .bindByName('fqdn -> fqdn.get, 'type -> fromRecordType(recordType.get), 'startFrom -> startFrom.get, 'limit -> (maxItems + 1))
+            val sb = new StringBuilder
+            val initialQuery = s"SELECT data FROM record_change WHERE zone_id = '${zoneId.get}'"
+            sb.append(initialQuery)
+            val like = s""" AND data LIKE '%${fqdn.get}\"%'"""
+            sb.append(like)
+            val orderAndStart = s" ORDER BY created DESC"
+            sb.append(orderAndStart)
+            val query = sb.toString()
+            SQL(query)
             .map(toRecordSetChange)
             .list()
             .apply()
           } else if(fqdn.isDefined && recordType.isDefined){
-            LIST_CHANGES_WITHOUT_START_FQDN_TYPE
-              .bindByName('fqdn -> fqdn.get, 'type -> fromRecordType(recordType.get), 'limit -> (maxItems + 1))
+            val sb = new StringBuilder
+            val initialQuery = s"SELECT data FROM record_change WHERE zone_id = '${zoneId.get}'"
+            sb.append(initialQuery)
+            val like = s""" AND data LIKE '%${fqdn.get}\"%'"""
+            sb.append(like)
+            val orderAndStart = s" ORDER BY created DESC"
+            sb.append(orderAndStart)
+            val query = sb.toString()
+            SQL(query)
               .map(toRecordSetChange)
               .list()
               .apply()
@@ -151,12 +144,24 @@ class MySqlRecordChangeRepository
               .apply()
           }
 
-          val maxQueries = changes.take(maxItems)
+          val filterByRecordType = if(fqdn.isDefined && recordType.isDefined) {
+            changes.filter(_.recordSet.typ.toString == recordType.get.toString)
+          } else {
+            changes
+          }
+
+          val startFromRecord = if(fqdn.isDefined && recordType.isDefined && startFrom.isDefined) {
+            filterByRecordType.slice(startFrom.get, filterByRecordType.size)
+          } else {
+            filterByRecordType
+          }
+
+          val maxQueries = startFromRecord.take(maxItems)
           val startValue = startFrom.getOrElse(0)
 
           // earlier maxItems was incremented, if the (maxItems + 1) size is not reached then pages are exhausted
-          val nextId = changes match {
-            case _ if changes.size <= maxItems | changes.isEmpty => None
+          val nextId = startFromRecord match {
+            case _ if startFromRecord.size <= maxItems | startFromRecord.isEmpty => None
             case _ => Some(startValue + maxItems)
           }
 

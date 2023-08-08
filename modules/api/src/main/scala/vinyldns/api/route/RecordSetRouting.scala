@@ -244,8 +244,8 @@ class RecordSetRoute(
     } ~
     path("recordsetchange" / "history") {
       (get & monitor("Endpoint.listRecordSetChangeHistory")) {
-        parameters("startFrom".as[Int].?, "maxItems".as[Int].?(DEFAULT_MAX_ITEMS), "fqdn".as[String].?, "recordType".as[String].?) {
-          (startFrom: Option[Int], maxItems: Int, fqdn: Option[String], recordType: Option[String]) =>
+        parameters("startFrom".as[Int].?, "maxItems".as[Int].?(DEFAULT_MAX_ITEMS), "fqdn".as[String].?, "recordType".as[String].?, "zoneId".as[String].?) {
+          (startFrom: Option[Int], maxItems: Int, fqdn: Option[String], recordType: Option[String], zoneId: Option[String]) =>
             handleRejections(invalidQueryHandler) {
               val errorMessage = if(fqdn.isEmpty || recordType.isEmpty) {
                 "recordType and fqdn cannot be empty"
@@ -260,7 +260,7 @@ class RecordSetRoute(
               ){
                 authenticateAndExecute(
                   recordSetService
-                    .listRecordSetChangeHistory(None, startFrom, maxItems, fqdn, RecordType.find(recordType.get), _)
+                    .listRecordSetChangeHistory(zoneId, startFrom, maxItems, fqdn, RecordType.find(recordType.get), _)
                 ) { changes =>
                   complete(StatusCodes.OK, changes)
                 }
