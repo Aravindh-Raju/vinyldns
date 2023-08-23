@@ -3106,9 +3106,9 @@ def test_mx_recordtype_update_delete_checks(shared_zone_test_context):
         clear_recordset_list(ok_deletes, ok_client)
 
 
-def test_create_batch_change_does_not_save_owner_group_id_for_non_shared_zone(shared_zone_test_context):
+def test_create_batch_change_save_owner_group_id_for_non_shared_zone(shared_zone_test_context):
     """
-    Test successfully creating a batch change with owner group ID doesn't save value for records in non-shared zone
+    Test successfully creating a batch change with owner group ID save value for records in non-shared zone
     """
     ok_client = shared_zone_test_context.ok_vinyldns_client
     ok_zone = shared_zone_test_context.ok_zone
@@ -3149,7 +3149,11 @@ def test_create_batch_change_does_not_save_owner_group_id_for_non_shared_zone(sh
 
         for (zoneId, recordSetId) in to_delete:
             get_recordset = ok_client.get_recordset(zoneId, recordSetId, status=200)
-            assert_that(get_recordset["recordSet"], is_not(has_key("ownerGroupId")))
+            if "ownerGroupId" in get_recordset["recordSet"]:
+                assert_that(get_recordset["recordSet"]["ownerGroupId"], is_(batch_change_input["ownerGroupId"]))
+            else:
+                assert_that(get_recordset["recordSet"], is_not(has_key("ownerGroupId")))
+
     finally:
         clear_zoneid_rsid_tuple_list(to_delete, ok_client)
 
@@ -3268,11 +3272,11 @@ def test_create_batch_change_validation_with_owner_group_id(shared_zone_test_con
     Test creating a batch change should properly set owner group ID in the following circumstances:
     - create in shared zone
     - update in shared zone without existing owner group ID
-
-    Owner group ID will be ignored in the following circumstances:
     - create in private zone
     - update in private zone
     - update in shared zone with pre-existing owner group ID
+
+    Owner group ID will be ignored in the following circumstances:
     - delete in either private or shared zone
     """
     shared_client = shared_zone_test_context.shared_zone_vinyldns_client
@@ -3392,7 +3396,10 @@ def test_create_batch_change_validation_with_owner_group_id(shared_zone_test_con
         # verify record set owner group
         for result_rs in to_delete_ok:
             rs_result = ok_client.get_recordset(result_rs[0], result_rs[1], status=200)
-            assert_that(rs_result["recordSet"], is_not(has_key("ownerGroupId")))
+            if "ownerGroupId" in rs_result["recordSet"]:
+                assert_that(rs_result["recordSet"]["ownerGroupId"], is_(batch_change_input["ownerGroupId"]))
+            else:
+                assert_that(rs_result["recordSet"], is_not(has_key("ownerGroupId")))
 
         for result_rs in to_delete_shared:
             rs_result = shared_client.get_recordset(result_rs[0], result_rs[1], status=200)
@@ -3652,11 +3659,11 @@ def test_create_batch_with_global_acl_rule_applied_succeeds(shared_zone_test_con
     dummy_client = shared_zone_test_context.dummy_vinyldns_client
     shared_zone = shared_zone_test_context.shared_zone
     ok_client = shared_zone_test_context.ok_vinyldns_client
+    ok_group = shared_zone_test_context.ok_group
     classless_base_zone = shared_zone_test_context.classless_base_zone
     create_a_rs = None
     create_ptr_rs = None
     dummy_group_id = shared_zone_test_context.dummy_group["id"]
-    dummy_group_name = shared_zone_test_context.dummy_group["name"]
     ip4_prefix = shared_zone_test_context.ip4_classless_prefix
     shared_zone_name = shared_zone_test_context.shared_zone["name"]
 
@@ -3713,11 +3720,11 @@ def test_create_batch_with_global_acl_rule_applied_succeeds(shared_zone_test_con
             shared_client.wait_until_recordset_change_status(delete_a_rs, "Complete")
 
         if create_ptr_rs:
-            retrieved = dummy_client.get_recordset(shared_zone["id"], create_ptr_rs["recordSet"]["id"])
+            retrieved = ok_client.get_recordset(shared_zone["id"], create_ptr_rs["recordSet"]["id"])
             retrieved_rs = retrieved["recordSet"]
 
-            assert_that(retrieved_rs, is_not(has_key("ownerGroupId")))
-            assert_that(retrieved_rs, is_not(has_key({dummy_group_name})))
+            assert_that(retrieved_rs["ownerGroupId"], is_(ok_group["id"]))
+            assert_that(retrieved_rs["ownerGroupName"], is_(ok_group["name"]))
 
             delete_ptr_rs = ok_client.delete_recordset(classless_base_zone["id"], create_ptr_rs["recordSet"]["id"],
                                                        status=202)
@@ -4206,8 +4213,8 @@ def test_create_batch_change_with_multi_record_adds_with_multi_record_support(sh
         "changes": [
             get_change_A_AAAA_json(f"multi.{ok_zone_name}", address="1.2.3.4"),
             get_change_A_AAAA_json(f"multi.{ok_zone_name}", address="4.5.6.7"),
-            get_change_PTR_json(f"{ip4_prefix}.44", ptrdname="multi.test"),
-            get_change_PTR_json(f"{ip4_prefix}.44", ptrdname="multi2.test"),
+            get_change_PTR_json(f"{ip4_prefix}.50", ptrdname="multi.test"),
+            get_change_PTR_json(f"{ip4_prefix}.51", ptrdname="multi2.test"),
             get_change_TXT_json(f"multi-txt.{ok_zone_name}", text="some-multi-text"),
             get_change_TXT_json(f"multi-txt.{ok_zone_name}", text="more-multi-text"),
             get_change_MX_json(f"multi-mx.{ok_zone_name}", preference=0),
@@ -4224,8 +4231,8 @@ def test_create_batch_change_with_multi_record_adds_with_multi_record_support(sh
 
         assert_successful_change_in_error_response(response["changes"][0], input_name=f"multi.{ok_zone_name}", record_data="1.2.3.4")
         assert_successful_change_in_error_response(response["changes"][1], input_name=f"multi.{ok_zone_name}", record_data="4.5.6.7")
-        assert_successful_change_in_error_response(response["changes"][2], input_name=f"{ip4_prefix}.44", record_type="PTR", record_data="multi.test.")
-        assert_successful_change_in_error_response(response["changes"][3], input_name=f"{ip4_prefix}.44", record_type="PTR", record_data="multi2.test.")
+        assert_successful_change_in_error_response(response["changes"][2], input_name=f"{ip4_prefix}.50", record_type="PTR", record_data="multi.test.")
+        assert_successful_change_in_error_response(response["changes"][3], input_name=f"{ip4_prefix}.51", record_type="PTR", record_data="multi2.test.")
         assert_successful_change_in_error_response(response["changes"][4], input_name=f"multi-txt.{ok_zone_name}", record_type="TXT", record_data="some-multi-text")
         assert_successful_change_in_error_response(response["changes"][5], input_name=f"multi-txt.{ok_zone_name}", record_type="TXT", record_data="more-multi-text")
         assert_successful_change_in_error_response(response["changes"][6], input_name=f"multi-mx.{ok_zone_name}", record_type="MX", record_data={"preference": 0, "exchange": "foo.bar."})

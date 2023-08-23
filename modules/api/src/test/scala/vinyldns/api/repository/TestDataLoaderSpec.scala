@@ -41,6 +41,7 @@ class TestDataLoaderSpec extends AnyWordSpec with Matchers with MockitoSugar {
 
   // Add connection to run tests
   ConnectionPool.add('default, "jdbc:h2:mem:vinyldns;MODE=MYSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;IGNORECASE=TRUE;INIT=RUNSCRIPT FROM 'classpath:test/ddl.sql'","sa","")
+
   "loadTestData" should {
     "succeed if filtered appropriately" in {
       val zoneRepo = mock[ZoneRepository]

@@ -120,8 +120,10 @@ class MembershipServiceSpec
       mockRecordSetRepo,
       underTest
     )
+
   // Add connection to run tests
   ConnectionPool.add('default, "jdbc:h2:mem:vinyldns;MODE=MYSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;IGNORECASE=TRUE;INIT=RUNSCRIPT FROM 'classpath:test/ddl.sql'","sa","")
+
   "MembershipService" should {
     "create a new group" should {
       "save the group and add the members when the group is valid" in {

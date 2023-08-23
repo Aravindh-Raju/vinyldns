@@ -70,6 +70,12 @@ case class RecordSetChange(
         .copy(status = RecordSetStatus.Inactive, updated = Some(Instant.now.truncatedTo(ChronoUnit.MILLIS)))
     )
 
+  def updateRecordOwnerGroup(groupId: String): RecordSetChange =
+    copy(
+      recordSet = recordSet
+        .copy(ownerGroupId = Some(groupId))
+    )
+
   def isDone: Boolean = RecordSetChangeStatus.isDone(status)
 
   def isComplete: Boolean = status == RecordSetChangeStatus.Complete

@@ -88,6 +88,13 @@ class MySqlRecordSetRepository extends RecordSetRepository with Monitored {
          |LIMIT 1
     """.stripMargin
 
+  private val GET_RECORDSETS_BY_ZONEID =
+    sql"""
+         |SELECT data, fqdn
+         |  FROM recordset
+         |WHERE zone_id = {zoneId}
+    """.stripMargin
+
   private final val logger = LoggerFactory.getLogger(classOf[MySqlRecordSetRepository])
 
   def apply(db: DB, changeSet: ChangeSet): IO[ChangeSet] =
@@ -315,6 +322,22 @@ class MySqlRecordSetRepository extends RecordSetRepository with Monitored {
       }
     }
 
+  def getRecordSetsByIds(recordSetIds: List[String]): IO[List[RecordSet]] =
+    monitor("repo.RecordSet.getRecordSetsByIds") {
+      IO {
+        if (recordSetIds.isEmpty)
+          List[RecordSet]()
+        else {
+          DB.readOnly { implicit s =>
+            val initialQuery = "SELECT data, fqdn FROM recordset WHERE id"
+            val inClause = " IN (" + recordSetIds.as("?").mkString(",") + ")"
+            val query = initialQuery + inClause
+            SQL(query).bind(recordSetIds: _*).map(toRecordSet).list().apply()
+          }
+        }
+      }
+    }
+
   def getRecordSetCount(zoneId: String): IO[Int] =
     monitor("repo.RecordSet.getRecordSetCount") {
       IO {
@@ -337,6 +360,19 @@ class MySqlRecordSetRepository extends RecordSetRepository with Monitored {
         DB.readOnly { implicit s =>
           FIND_BY_ZONEID_NAME
             .bindByName('zoneId -> zoneId, 'name -> name)
+            .map(toRecordSet)
+            .list()
+            .apply()
+        }
+      }
+    }
+
+  def getRecordSetsByZoneId(zoneId: String): IO[List[RecordSet]] =
+    monitor("repo.RecordSet.getRecordSetsByZoneId") {
+      IO {
+        DB.readOnly { implicit s =>
+          GET_RECORDSETS_BY_ZONEID
+            .bindByName('zoneId -> zoneId)
             .map(toRecordSet)
             .list()
             .apply()

@@ -48,6 +48,10 @@ trait RecordSetRepository extends Repository {
 
   def getRecordSetsByFQDNs(names: Set[String]): IO[List[RecordSet]]
 
+  def getRecordSetsByZoneId(zoneId: String): IO[List[RecordSet]]
+
+  def getRecordSetsByIds(recordSetIds: List[String]): IO[List[RecordSet]]
+
   def getFirstOwnedRecordByGroup(ownerGroupId: String): IO[Option[String]]
 
   def deleteRecordSetsInZone(db: DB,zoneId: String, zoneName: String): IO[Unit]

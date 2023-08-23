@@ -293,6 +293,9 @@ object TestRecordSetData {
       updates = Some(recordSet)
     )
 
+  val completeRsOk: RecordSetChange = makeTestAddChange(rsOk, okZone).copy(status = RecordSetChangeStatus.Complete)
+  val completeAaaa: RecordSetChange = makeTestAddChange(aaaa, okZone).copy(status = RecordSetChangeStatus.Complete)
+
   val pendingCreateAAAA: RecordSetChange = makeTestAddChange(aaaa, zoneActive)
   val completeCreateAAAA: RecordSetChange =
     pendingCreateAAAA.copy(status = RecordSetChangeStatus.Complete)
@@ -316,4 +319,6 @@ object TestRecordSetData {
   val pendingChangeSet: ChangeSet = ChangeSet(Seq(pendingCreateAAAA, pendingCreateCNAME))
 
   val pendingUpdateChangeSet: ChangeSet = ChangeSet(Seq(pendingUpdateAAAA))
+
+  val ownerGroupChangeSet: ChangeSet = ChangeSet(Seq(completeRsOk, completeAaaa))
 }

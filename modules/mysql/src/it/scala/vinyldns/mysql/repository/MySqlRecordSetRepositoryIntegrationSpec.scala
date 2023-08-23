@@ -669,6 +669,32 @@ class MySqlRecordSetRepositoryIntegrationSpec
       results shouldBe empty
     }
   }
+  "get record sets by record ids" should {
+    "return a record set when there is a match" in {
+      val existing = insert(okZone, 2).map(_.recordSet)
+      val results =
+        repo.getRecordSetsByIds(List(existing.head.id)).unsafeRunSync()
+      results.headOption shouldBe Some(recordSetWithFQDN(existing.head, okZone))
+    }
+    "return none when there is no match" in {
+      insert(okZone, 2).map(_.recordSet)
+      val results = repo.getRecordSetsByIds(List("not-there")).unsafeRunSync()
+      results shouldBe empty
+    }
+  }
+  "get record sets by zone id" should {
+    "return a record set when there is a match" in {
+      val existing = insert(okZone, 1).map(_.recordSet)
+      val results =
+        repo.getRecordSetsByZoneId(okZone.id).unsafeRunSync()
+      results.headOption shouldBe Some(recordSetWithFQDN(existing.head, okZone))
+    }
+    "return none when there is no match" in {
+      insert(okZone, 1).map(_.recordSet)
+      val results = repo.getRecordSetsByZoneId("not-there").unsafeRunSync()
+      results shouldBe empty
+    }
+  }
   "get record set by id" should {
     "return a record set when there is a match" in {
       val existing = insert(okZone, 1).map(_.recordSet)

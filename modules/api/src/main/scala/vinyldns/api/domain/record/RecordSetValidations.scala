@@ -393,6 +393,7 @@ object RecordSetValidations {
   }
 
   def canUseOwnerGroup(
+      zone: Zone,
       ownerGroupId: Option[String],
       group: Option[Group],
       authPrincipal: AuthPrincipal
@@ -403,6 +404,7 @@ object RecordSetValidations {
         InvalidGroupError(s"""Record owner group with id "$groupId" not found""").asLeft
       case (Some(groupId), Some(_)) =>
         if (authPrincipal.isSuper || authPrincipal.isGroupMember(groupId)) ().asRight
+        else if(!zone.shared && groupId == zone.adminGroupId) ().asRight
         else InvalidRequest(s"""User not in record owner group with id "$groupId"""").asLeft
     }
 

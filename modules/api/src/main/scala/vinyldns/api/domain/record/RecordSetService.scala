@@ -93,7 +93,7 @@ class RecordSetService(
     for {
       zone <- getZone(recordSet.zoneId)
       authZones = dottedHostsConfig.zoneAuthConfigs.map(x => x.zone)
-      change <- RecordSetChangeGenerator.forAdd(recordSet, zone, Some(auth)).toResult
+      change <- if(!zone.shared && recordSet.ownerGroupId.isEmpty) RecordSetChangeGenerator.forAdd(recordSet.copy(ownerGroupId = Some(zone.adminGroupId)), zone, Some(auth)).toResult else RecordSetChangeGenerator.forAdd(recordSet, zone, Some(auth)).toResult
       // because changes happen to the RS in forAdd itself, converting 1st and validating on that
       rsForValidations = change.recordSet
       _ <- isNotHighValueDomain(recordSet, zone, highValueDomainConfig).toResult
@@ -110,7 +110,7 @@ class RecordSetService(
         .getRecordSetsByName(zone.id, rsForValidations.name)
         .toResult[List[RecordSet]]
       ownerGroup <- getGroupIfProvided(rsForValidations.ownerGroupId)
-      _ <- canUseOwnerGroup(rsForValidations.ownerGroupId, ownerGroup, auth).toResult
+      _ <- canUseOwnerGroup(zone, rsForValidations.ownerGroupId, ownerGroup, auth).toResult
       _ <- noCnameWithNewName(rsForValidations, existingRecordsWithName, zone).toResult
       allowedZoneList <- getAllowedZones(authZones).toResult[Set[String]]
       isInAllowedUsers = checkIfInAllowedUsers(zone, dottedHostsConfig, auth)
@@ -143,14 +143,14 @@ class RecordSetService(
       _ <- unchangedRecordName(existing, recordSet, zone).toResult
       _ <- unchangedRecordType(existing, recordSet).toResult
       _ <- unchangedZoneId(existing, recordSet).toResult
-      change <- RecordSetChangeGenerator.forUpdate(existing, recordSet, zone, Some(auth)).toResult
+      change <- if(!zone.shared && (recordSet.ownerGroupId.isEmpty || (recordSet.ownerGroupId.isDefined && existing.ownerGroupId.isDefined && (recordSet.ownerGroupId.get != existing.ownerGroupId.get)))) RecordSetChangeGenerator.forUpdate(existing, recordSet.copy(ownerGroupId = Some(zone.adminGroupId)), zone, Some(auth)).toResult else RecordSetChangeGenerator.forUpdate(existing, recordSet, zone, Some(auth)).toResult
       // because changes happen to the RS in forUpdate itself, converting 1st and validating on that
       rsForValidations = change.recordSet
       superUserCanUpdateOwnerGroup = canSuperUserUpdateOwnerGroup(existing, recordSet, zone, auth)
       _ <- isNotHighValueDomain(recordSet, zone, highValueDomainConfig).toResult
       _ <- canUpdateRecordSet(auth, existing.name, existing.typ, zone, existing.ownerGroupId, superUserCanUpdateOwnerGroup).toResult
       ownerGroup <- getGroupIfProvided(rsForValidations.ownerGroupId)
-      _ <- canUseOwnerGroup(rsForValidations.ownerGroupId, ownerGroup, auth).toResult
+      _ <- canUseOwnerGroup(zone, rsForValidations.ownerGroupId, ownerGroup, auth).toResult
       _ <- notPending(existing).toResult
       existingRecordsWithName <- recordSetRepository
         .getRecordSetsByName(zone.id, rsForValidations.name)
@@ -583,14 +583,14 @@ class RecordSetService(
                             recordType: Option[RecordType] = None,
                             authPrincipal: AuthPrincipal
                           ): Result[ListRecordSetChangesResponse] =
-      for {
-        zone <- getZone(zoneId.get)
-        _ <- canSeeZone(authPrincipal, zone).toResult
-        recordSetChangesResults <- recordChangeRepository
-          .listRecordSetChanges(Some(zone.id), startFrom, maxItems, fqdn, recordType)
-          .toResult[ListRecordSetChangesResults]
-        recordSetChangesInfo <- buildRecordSetChangeInfo(recordSetChangesResults.items)
-      } yield ListRecordSetChangesResponse(zoneId.get, recordSetChangesResults, recordSetChangesInfo)
+    for {
+      zone <- getZone(zoneId.get)
+      _ <- canSeeZone(authPrincipal, zone).toResult
+      recordSetChangesResults <- recordChangeRepository
+        .listRecordSetChanges(Some(zone.id), startFrom, maxItems, fqdn, recordType)
+        .toResult[ListRecordSetChangesResults]
+      recordSetChangesInfo <- buildRecordSetChangeInfo(recordSetChangesResults.items)
+    } yield ListRecordSetChangesResponse(zoneId.get, recordSetChangesResults, recordSetChangesInfo)
 
   def listRecordSetChangeHistory(
                             zoneId: Option[String] = None,

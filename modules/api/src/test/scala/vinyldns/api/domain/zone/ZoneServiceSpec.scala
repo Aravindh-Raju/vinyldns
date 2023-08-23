@@ -25,11 +25,12 @@ import cats.implicits._
 import vinyldns.api.Interfaces._
 import cats.effect._
 import org.scalatest.{BeforeAndAfterEach, EitherValues}
+import scalikejdbc.{ConnectionPool, DB}
 import vinyldns.api.config.ValidEmailConfig
 import vinyldns.api.domain.access.AccessValidations
 import vinyldns.api.domain.membership.{EmailValidationError, MembershipService}
-import vinyldns.core.domain.record.RecordSetRepository
-//import vinyldns.api.domain.membership.{EmailValidationError, MembershipService}
+import vinyldns.core.TestRecordSetData._
+import vinyldns.core.domain.record.{ChangeSet, RecordChangeRepository, RecordSetCacheRepository, RecordSetChange, RecordSetRepository}
 import vinyldns.api.repository.TestDataLoader
 import vinyldns.core.domain.auth.AuthPrincipal
 import vinyldns.core.domain.membership._
@@ -62,6 +63,8 @@ class ZoneServiceSpec
   private val mockMembershipRepo = mock[MembershipRepository]
   private val mockGroupChangeRepo = mock[GroupChangeRepository]
   private val mockRecordSetRepo = mock[RecordSetRepository]
+  private val mockRecordChangeRepo = mock[RecordChangeRepository]
+  private val mockRecordSetCacheRepo = mock[RecordSetCacheRepository]
   private val mockValidEmailConfig = ValidEmailConfig(valid_domains = List("test.com", "*dummy.com"),2)
   private val mockValidEmailConfigNew = ValidEmailConfig(valid_domains = List(),2)
   private val mockMembershipService = new MembershipService(mockGroupRepo,
@@ -93,6 +96,9 @@ class ZoneServiceSpec
     mockGroupRepo,
     mockUserRepo,
     mockZoneChangeRepo,
+    mockRecordSetRepo,
+    mockRecordChangeRepo,
+    mockRecordSetCacheRepo,
     TestConnectionValidator,
     mockMessageQueue,
     new ZoneValidations(1000),
@@ -106,6 +112,9 @@ class ZoneServiceSpec
     mockGroupRepo,
     mockUserRepo,
     mockZoneChangeRepo,
+    mockRecordSetRepo,
+    mockRecordChangeRepo,
+    mockRecordSetCacheRepo,
     TestConnectionValidator,
     mockMessageQueue,
     new ZoneValidations(1000),
@@ -141,6 +150,9 @@ class ZoneServiceSpec
     doReturn(IO.pure(Some(okGroup))).when(mockGroupRepo).getGroup(anyString)
     doReturn(IO.unit).when(mockMessageQueue).send(any[ZoneChange])
   }
+
+  // Add connection to run tests
+  ConnectionPool.add('default, "jdbc:h2:mem:vinyldns;MODE=MYSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;IGNORECASE=TRUE;INIT=RUNSCRIPT FROM 'classpath:test/ddl.sql'","sa","")
 
   "Creating Zones" should {
     "return an appropriate zone change response" in {
@@ -424,10 +436,15 @@ class ZoneServiceSpec
 
   "Updating Zones" should {
     "return an update zone change response" in {
-      doReturn(IO.pure(Some(okZone))).when(mockZoneRepo).getZone(anyString)
-
       val doubleAuth = AuthPrincipal(TestDataLoader.okUser, Seq(twoUserGroup.id, okGroup.id))
       val updateZoneInput = updateZoneAuthorized.copy(adminGroupId = twoUserGroup.id)
+
+      doReturn(IO.pure(Some(okZone))).when(mockZoneRepo).getZone(anyString)
+      doReturn(IO.pure(List(rsOk,aaaa))).when(mockRecordSetRepo).getRecordSetsByZoneId(anyString)
+      doReturn(IO.pure(List(rsOk,aaaa))).when(mockRecordSetRepo).getRecordSetsByIds(any[List[String]])
+      doReturn(IO.pure(ownerGroupChangeSet)).when(mockRecordSetRepo).apply(any[DB], any[ChangeSet])
+      doReturn(IO.pure(ownerGroupChangeSet)).when(mockRecordChangeRepo).save(any[DB], any[ChangeSet])
+      doReturn(IO.pure(ownerGroupChangeSet)).when(mockRecordSetCacheRepo).save(any[DB], any[ChangeSet])
 
       val resultChange: ZoneChange =
         underTest
@@ -1230,6 +1247,26 @@ class ZoneServiceSpec
 
       result.changeType shouldBe ZoneChangeType.Update
       result.zone.acl.rules.size shouldBe 0
+    }
+  }
+
+  "updateRecordSetOwnerGroup" should {
+    "update the record's owner group same as the zone's admin group" in {
+      val doubleAuth = AuthPrincipal(TestDataLoader.okUser, Seq(twoUserGroup.id, okGroup.id))
+      val updateZoneInput = updateZoneAuthorized.copy(adminGroupId = twoUserGroup.id)
+
+      val expectedRsOk = rsOk.copy(ownerGroupId = Some(updateZoneInput.adminGroupId))
+      val expectedAaaa = aaaa.copy(ownerGroupId = Some(updateZoneInput.adminGroupId))
+
+      doReturn(IO.pure(List(expectedRsOk,expectedAaaa))).when(mockRecordSetRepo).getRecordSetsByZoneId(anyString)
+      doReturn(IO.pure(List(expectedRsOk,expectedAaaa))).when(mockRecordSetRepo).getRecordSetsByIds(any[List[String]])
+
+      val resultChange: List[RecordSetChange]=
+        underTest
+          .updateRecordSetOwnerGroup(updateZoneInput, doubleAuth, okZone).value.unsafeRunSync().toOption.get
+
+      resultChange.head.recordSet.ownerGroupId shouldBe Some(updateZoneInput.adminGroupId)
+      resultChange.last.recordSet.ownerGroupId shouldBe Some(updateZoneInput.adminGroupId)
     }
   }
 }

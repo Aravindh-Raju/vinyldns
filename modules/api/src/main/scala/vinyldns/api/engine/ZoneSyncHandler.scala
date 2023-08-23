@@ -142,7 +142,14 @@ object ZoneSyncHandler extends DnsConversions with Monitored with TransactionPro
               s"zone.sync.changes; zoneName='${zone.name}'; " +
                 s"changeCount=${changesWithUserIds.size}; zoneChange='${zoneChange.id}'"
             )
-            val changeSet = ChangeSet(changesWithUserIds).copy(status = ChangeSetStatus.Applied)
+
+            val setRecordOwnerGroupChanges =
+              if (zoneChange.changeType == ZoneChangeType.Create && !zoneChange.zone.shared) {
+                changesWithUserIds.map(rsc => rsc.updateRecordOwnerGroup(zone.adminGroupId))
+              } else {
+                changesWithUserIds
+              }
+            val changeSet = ChangeSet(setRecordOwnerGroupChanges).copy(status = ChangeSetStatus.Applied)
 
             executeWithinTransaction { db: DB =>
               // we want to make sure we write to both the change repo and record set repo

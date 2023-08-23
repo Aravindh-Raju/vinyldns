@@ -32,7 +32,11 @@ import com.cronutils.model.definition.CronDefinition
 import com.cronutils.model.definition.CronDefinitionBuilder
 import com.cronutils.parser.CronParser
 import com.cronutils.model.CronType
+import scalikejdbc.DB
 import vinyldns.api.domain.membership.MembershipService
+import vinyldns.api.domain.record.RecordSetChangeGenerator
+import vinyldns.core.domain.record.{ChangeSet, RecordChangeRepository, RecordSetCacheRepository, RecordSetChange, RecordSetChangeStatus, RecordSetChangeType, RecordSetRepository}
+import vinyldns.mysql.TransactionProvider
 
 object ZoneService {
   def apply(
@@ -50,6 +54,9 @@ object ZoneService {
       dataAccessor.groupRepository,
       dataAccessor.userRepository,
       dataAccessor.zoneChangeRepository,
+      dataAccessor.recordSetRepository,
+      dataAccessor.recordChangeRepository,
+      dataAccessor.recordSetCacheRepository,
       connectionValidator,
       messageQueue,
       zoneValidations,
@@ -65,6 +72,9 @@ class ZoneService(
     groupRepository: GroupRepository,
     userRepository: UserRepository,
     zoneChangeRepository: ZoneChangeRepository,
+    recordSetRepository: RecordSetRepository,
+    recordChangeRepository: RecordChangeRepository,
+    recordSetCacheRepository: RecordSetCacheRepository,
     connectionValidator: ZoneConnectionValidatorAlgebra,
     messageQueue: MessageQueue,
     zoneValidations: ZoneValidations,
@@ -72,7 +82,7 @@ class ZoneService(
     backendResolver: BackendResolver,
     crypto: CryptoAlgebra,
     membershipService:MembershipService
-) extends ZoneServiceAlgebra {
+) extends ZoneServiceAlgebra with TransactionProvider {
 
   import accessValidation._
   import zoneValidations._
@@ -106,6 +116,9 @@ class ZoneService(
       _ <- membershipService.emailValidation(updateZoneInput.email)
       _ <- connectionValidator.isValidBackendId(updateZoneInput.backendId).toResult
       existingZone <- getZoneOrFail(updateZoneInput.id)
+      isAdminGroupUpdated = if (!updateZoneInput.shared && (updateZoneInput.adminGroupId != existingZone.adminGroupId)) true else false
+      rs <- if(isAdminGroupUpdated) updateRecordSetOwnerGroup(updateZoneInput, auth, existingZone) else IO(List.empty).toResult[List[RecordSetChange]]
+      _ <- if (rs.nonEmpty) saveChangeSet(ChangeSet(rs)) else IO.unit.toResult
       _ <- validateSharedZoneAuthorized(
         existingZone.shared,
         updateZoneInput.shared,
@@ -407,6 +420,31 @@ class ZoneService(
     } else {
       ().toResult
     }
+
+  def updateRecordSetOwnerGroup(
+                                 zone: UpdateZoneInput,
+                                 auth: AuthPrincipal,
+                                 existingZone: Zone
+                               ): Result[List[RecordSetChange]] = {
+    for {
+      getRecordSets <- recordSetRepository.getRecordSetsByZoneId(zone.id)
+      rsIds = getRecordSets.map(rs => rs.id)
+      existingRecordSets <- recordSetRepository.getRecordSetsByIds(rsIds)
+      updateRecords = if (getRecordSets.nonEmpty) getRecordSets.map(x => x.copy(ownerGroupId = Some(zone.adminGroupId))) else Seq.empty
+      rsChanges = updateRecords.zip(existingRecordSets).map{case (rs, ers) => RecordSetChangeGenerator.forUpdate(ers, rs, existingZone, Some(auth)).copy(status = RecordSetChangeStatus.Complete, changeType = RecordSetChangeType.Update)}.toList
+    } yield rsChanges
+  }.toResult
+
+  def saveChangeSet(
+                     changeSet: ChangeSet
+                   ): Result[Unit] =
+    executeWithinTransaction { db: DB =>
+      for {
+        _ <-  recordSetRepository.apply(db, changeSet)
+        _ <-  recordChangeRepository.save(db, changeSet)
+        _ <-  recordSetCacheRepository.save(db, changeSet)
+      } yield ()
+    }.toResult
 
   def getZoneAclDisplay(zoneAcl: ZoneACL): Result[ZoneACLInfo] = {
     val (withUserId, without) = zoneAcl.rules.partition(_.userId.isDefined)

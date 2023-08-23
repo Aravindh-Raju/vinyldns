@@ -107,7 +107,7 @@ class RecordSetChangeHandlerSpec
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
 
   private val underTest =
-    RecordSetChangeHandler(mockRsRepo, mockChangeRepo, mockRecordSetDataRepo,batchRepo )
+    RecordSetChangeHandler(mockRsRepo, mockChangeRepo, mockRecordSetDataRepo,batchRepo)
 
   override protected def beforeEach(): Unit = {
     reset(mockBackend, mockRsRepo, mockChangeRepo)
@@ -121,8 +121,10 @@ class RecordSetChangeHandlerSpec
       .getRecordSets(anyString, anyString, any(classOf[RecordType]))
 
   }
+
   // Add connection to run tests
   ConnectionPool.add('default, "jdbc:h2:mem:vinyldns;MODE=MYSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;IGNORECASE=TRUE;INIT=RUNSCRIPT FROM 'classpath:test/ddl.sql'","sa","")
+
   "Handling Pending Changes" should {
     "complete the change successfully if already applied" in {
       doReturn(IO.pure(List(rs)))

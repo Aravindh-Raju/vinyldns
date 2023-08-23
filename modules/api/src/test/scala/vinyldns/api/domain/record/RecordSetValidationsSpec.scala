@@ -597,14 +597,14 @@ class RecordSetValidationsSpec
 
     "canUseOwnerGroup" should {
       "pass if owner group id is None" in {
-        canUseOwnerGroup(None, None, okAuth) should be(right)
-        canUseOwnerGroup(None, Some(okGroup), okAuth) should be(right)
+        canUseOwnerGroup(okZone, None, None, okAuth) should be(right)
+        canUseOwnerGroup(okZone, None, Some(okGroup), okAuth) should be(right)
       }
       "fail if owner group id is provided with no group" in {
         val ownerGroupId = "bar"
         val auth = okAuth.copy(memberGroupIds = Seq("foo"))
 
-        leftValue(canUseOwnerGroup(Some(ownerGroupId), None, auth)) shouldBe a[InvalidGroupError]
+        leftValue(canUseOwnerGroup(okZone, Some(ownerGroupId), None, auth)) shouldBe a[InvalidGroupError]
       }
       "pass if owner group id is provided and user is super" in {
         val ownerGroupIdGood = "foo"
@@ -615,22 +615,22 @@ class RecordSetValidationsSpec
         )
         val ownerGroup = Group(id = ownerGroupIdGood, name = "test", email = "test@test.com")
 
-        canUseOwnerGroup(Some(ownerGroupIdGood), Some(ownerGroup), auth) should be(right)
-        canUseOwnerGroup(Some(ownerGroupIdBad), Some(ownerGroup), auth) should be(right)
+        canUseOwnerGroup(okZone, Some(ownerGroupIdGood), Some(ownerGroup), auth) should be(right)
+        canUseOwnerGroup(okZone, Some(ownerGroupIdBad), Some(ownerGroup), auth) should be(right)
       }
       "pass if owner group if is provided and user is in owner group" in {
         val ownerGroupId = "foo"
         val auth = okAuth.copy(memberGroupIds = Seq("foo"))
         val ownerGroup = Group(id = ownerGroupId, name = "test", email = "test@test.com")
 
-        canUseOwnerGroup(Some(ownerGroupId), Some(ownerGroup), auth) should be(right)
+        canUseOwnerGroup(okZone, Some(ownerGroupId), Some(ownerGroup), auth) should be(right)
       }
       "fail if owner group id is provided and user is not in owner group" in {
         val ownerGroupId = "bar"
         val auth = okAuth.copy(memberGroupIds = Seq("foo"))
         val ownerGroup = Group(id = ownerGroupId, name = "test", email = "test@test.com")
 
-        val error = leftValue(canUseOwnerGroup(Some(ownerGroupId), Some(ownerGroup), auth))
+        val error = leftValue(canUseOwnerGroup(okZone, Some(ownerGroupId), Some(ownerGroup), auth))
         error shouldBe an[InvalidRequest]
       }
     }
