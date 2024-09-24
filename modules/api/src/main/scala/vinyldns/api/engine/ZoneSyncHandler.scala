@@ -18,7 +18,8 @@ package vinyldns.api.engine
 
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
-import java.time.Instant
+
+import java.time.{Duration, Instant}
 import java.time.temporal.ChronoUnit
 import org.slf4j.{Logger, LoggerFactory}
 import scalikejdbc.DB
@@ -29,6 +30,7 @@ import vinyldns.core.domain.record._
 import vinyldns.core.domain.zone._
 import vinyldns.core.route.Monitored
 import vinyldns.mysql.TransactionProvider
+
 import java.io.{PrintWriter, StringWriter}
 
 object ZoneSyncHandler extends DnsConversions with Monitored with TransactionProvider {
@@ -51,6 +53,7 @@ object ZoneSyncHandler extends DnsConversions with Monitored with TransactionPro
     zoneChange =>
       for {
         _ <- saveZoneAndChange(zoneRepository, zoneChangeRepository, zoneChange) // initial save to store zone status
+        startTime = Instant.now() // Start time
         // as Syncing
         syncChange <- runSync(
           recordSetRepository,
@@ -61,6 +64,9 @@ object ZoneSyncHandler extends DnsConversions with Monitored with TransactionPro
           maxZoneSize,
           vinyldnsLoader
         )
+        endTime = Instant.now() // End time
+        timeTaken = Duration.between(startTime, endTime).toMillis // Calculate time in milliseconds
+        _ = logger.info(s"Time taken for zone sync: $timeTaken ms") // Log the time taken
         _ <- saveZoneAndChange(zoneRepository, zoneChangeRepository, syncChange) // final save to store zone status
         // as Active
       } yield syncChange
