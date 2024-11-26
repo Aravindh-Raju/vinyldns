@@ -282,6 +282,7 @@ class MySqlRecordSetCacheRepository
                          recordNameFilter: Option[String],
                          recordTypeFilter: Option[Set[RecordType]],
                          recordOwnerGroupFilter: Option[String],
+                         recordDataFilter: Option[String],
                          nameSort: NameSort
                        ): IO[ListRecordSetResults] =
     monitor("repo.RecordSet.listRecordSetData") {
@@ -303,6 +304,12 @@ class MySqlRecordSetCacheRepository
           }
           case (Some(zId), None) => Some(sqls"recordset.zone_id = $zId ")
           case _ => None
+        }
+
+        val recordsetDataFilter = if (recordDataFilter.nonEmpty) {
+          Some(sqls"recordset_data.record_data LIKE ${"%" + recordDataFilter.get.replace('%', ' ').replace('*', ' ') + "%"}")
+        } else {
+          None
         }
 
         val searchByZone = zoneId.fold[Boolean](false)(_ => true)
@@ -337,7 +344,7 @@ class MySqlRecordSetCacheRepository
           recordOwnerGroupFilter.map(owner => sqls"recordset.owner_group_id = $owner ")
 
         val opts =
-          (zoneAndNameFilters ++ sortBy ++ typeFilter ++ ownerGroupFilter).toList
+          (zoneAndNameFilters ++ recordsetDataFilter ++ sortBy ++ typeFilter ++ ownerGroupFilter).toList
 
         val qualifiers = if (nameSort == ASC) {
           sqls"ORDER BY recordset.fqdn ASC, recordset.type ASC "
@@ -396,6 +403,7 @@ class MySqlRecordSetCacheRepository
             maxItems = maxItems,
             recordNameFilter = recordNameFilter,
             recordTypeFilter = recordTypeFilter,
+            recordDataFilter = recordDataFilter,
             nameSort = nameSort,
             recordTypeSort = RecordTypeSort.NONE)
         }

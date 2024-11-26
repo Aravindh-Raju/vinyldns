@@ -19,10 +19,15 @@
 angular.module('service.records', [])
     .service('recordsService', function ($http, utilityService) {
 
-        this.listRecordSetData = function (limit, startFrom, nameFilter, typeFilter, nameSort, ownerGroupFilter) {
+        this.listRecordSetData = function (limit, startFrom, nameFilter, typeFilter, nameSort, ownerGroupFilter, recordDataFilter) {
+            if (nameFilter == "") {
+                nameFilter = null;
+            }
+
             if (typeFilter == "") {
                 typeFilter = null;
             }
+
             if (nameSort == "") {
                 nameSort = null;
             }
@@ -31,13 +36,18 @@ angular.module('service.records', [])
                 ownerGroupFilter = null;
             }
 
+            if (recordDataFilter == "") {
+                recordDataFilter = null;
+            }
+
             var params = {
                 "maxItems": limit,
                 "startFrom": startFrom,
                 "recordNameFilter": nameFilter,
                 "recordTypeFilter": typeFilter,
                 "nameSort": nameSort,
-                "recordOwnerGroupFilter": ownerGroupFilter
+                "recordOwnerGroupFilter": ownerGroupFilter,
+                "recordDataFilter": recordDataFilter,
             };
             var url = utilityService.urlBuilder("/api/recordsets", params);
 

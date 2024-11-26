@@ -74,9 +74,10 @@ trait RecordSetServiceAlgebra {
   def searchRecordSets(
                         startFrom: Option[String],
                         maxItems: Option[Int],
-                        recordNameFilter: String,
+                        recordNameFilter: Option[String],
                         recordTypeFilter: Option[Set[RecordType]],
                         recordOwnerGroupId: Option[String],
+                        recordDataFilter: Option[String],
                         nameSort: NameSort,
                         authPrincipal: AuthPrincipal,
                         recordTypeSort: RecordTypeSort

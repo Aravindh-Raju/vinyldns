@@ -79,36 +79,75 @@
             var recordsPaging = pagingService.getNewPagingParams(100);
             var recordType = [];
             var recordName = [];
+            var recordData = [];
 
             // Initialize Bootstrap tooltips
             $(document).ready(function() {
                 $('[data-toggle="tooltip"]').tooltip();
             });
 
-            $( "#record-search-text" ).autocomplete({
-              source: function( request, response ) {
-                $.ajax({
-                  url: "/api/recordsets?maxItems=100",
-                  dataType: "json",
-                  data: {recordNameFilter: request.term, nameSort: $scope.nameSort},
-                  success: function( data ) {
-                      const recordSearch =  JSON.parse(JSON.stringify(data));
-                      response($.map(recordSearch.recordSets, function(item) {
-                      return {value: item.fqdn +' | '+ item.type , label: 'name: ' + item.fqdn + ' | type: ' + item.type }}))}
+            $.recordAutocompleteSearch = function() {
+                $( "#record-search-text" ).autocomplete({
+                  source: function( request, response ) {
+                    $.ajax({
+                      url: "/api/recordsets?maxItems=100",
+                      dataType: "json",
+                      data: {recordNameFilter: request.term, nameSort: $scope.nameSort},
+                      success: function( data ) {
+                          const recordSearch =  JSON.parse(JSON.stringify(data));
+                          response($.map(recordSearch.recordSets, function(item) {
+                          return {value: item.fqdn +' | '+ item.type , label: 'name: ' + item.fqdn + ' | type: ' + item.type }}))}
+                    });
+                  },
+                  minLength: 2,
+                  select: function (event, ui) {
+                      $scope.query = ui.item.value;
+                      $("#record-search-text").val(ui.item.value);
+                      return false;
+                    },
+                  open: function() {
+                    $( this ).removeClass( "ui-corner-all" ).addClass( "ui-corner-top" );
+                  },
+                  close: function() {
+                    $( this ).removeClass( "ui-corner-top" ).addClass( "ui-corner-all" );
+                  }
                 });
-              },
-              minLength: 2,
-              select: function (event, ui) {
-                  $scope.query = ui.item.value;
-                  $("#record-search-text").val(ui.item.value);
-                  return false;
-                },
-              open: function() {
-                $( this ).removeClass( "ui-corner-all" ).addClass( "ui-corner-top" );
-              },
-              close: function() {
-                $( this ).removeClass( "ui-corner-top" ).addClass( "ui-corner-all" );
-              }
+            }
+
+            // Should be the default autocomplete search result option
+            $.recordAutocompleteSearch();
+
+            $('.isRecordDataSearch').change(function() {
+                if(this.checked) {
+                    // Autocomplete for search by admin group
+                    $( "#record-search-text" ).autocomplete({
+                      source: function( request, response ) {
+                        $.ajax({
+                          url: "/api/recordsets?maxItems=100",
+                          dataType: "json",
+                          data: {recordDataFilter: request.term, nameSort: $scope.nameSort},
+                          success: function( data ) {
+                              const recordSearch =  JSON.parse(JSON.stringify(data));
+                              response($.map(recordSearch.recordSets, function(item) {
+                              return {value: item.fqdn +' | '+ item.type , label: 'name: ' + item.fqdn + ' | type: ' + item.type }}))}
+                        });
+                      },
+                      minLength: 2,
+                      select: function (event, ui) {
+                          $scope.query = ui.item.value;
+                          $("#record-search-text").val(ui.item.value);
+                          return false;
+                        },
+                      open: function() {
+                        $( this ).removeClass( "ui-corner-all" ).addClass( "ui-corner-top" );
+                      },
+                      close: function() {
+                        $( this ).removeClass( "ui-corner-top" ).addClass( "ui-corner-all" );
+                      }
+                    });
+                } else {
+                    $.recordAutocompleteSearch();
+                }
             });
 
             $.ui.autocomplete.prototype._renderItem = function( ul, item ) {
@@ -128,10 +167,24 @@
             $scope.refreshRecords = function() {
             if($scope.query.includes("|")) {
                 const queryRecord = $scope.query.split('|');
-                recordName = queryRecord[0].trim();
+                if($scope.searchByRecordData){
+                    recordData = queryRecord[0].trim();
+                    recordName = undefined;
+                } else {
+                    recordName = queryRecord[0].trim();
+                    recordData = undefined;
+                }
                 recordType = queryRecord[1].trim(); }
-            else { recordName = $scope.query;
-                   recordType = $scope.selectedRecordTypes.toString(); }
+            else {
+                if($scope.searchByRecordData){
+                    recordData = $scope.query;
+                    recordName = undefined;
+                } else {
+                    recordName = $scope.query;
+                    recordData = undefined;
+                }
+                recordType = $scope.selectedRecordTypes.toString();
+            }
 
               recordsPaging = pagingService.resetPaging(recordsPaging);
                 function success(response) {
@@ -140,7 +193,7 @@
                     getMembership();
                 }
                 return recordsService
-                    .listRecordSetData(recordsPaging.maxItems, undefined, recordName, recordType, $scope.nameSort, $scope.ownerGroupFilter)
+                    .listRecordSetData(recordsPaging.maxItems, undefined, recordName, recordType, $scope.nameSort, $scope.ownerGroupFilter, recordData)
                     .then(success)
                     .catch(function (error) {
                         handleError(error, 'dnsChangesService::getRecordSet-failure');
@@ -223,8 +276,15 @@
 
             $scope.prevPage = function() {
                 var startFrom = pagingService.getPrevStartFrom(recordsPaging);
+                if($scope.searchByRecordData){
+                    recordData = $scope.query;
+                    recordName = undefined;
+                } else {
+                    recordName = $scope.query;
+                    recordData = undefined;
+                }
                 return recordsService
-                    .listRecordSetData(recordsPaging.maxItems, startFrom, $scope.query, $scope.selectedRecordTypes.toString(), $scope.nameSort, $scope.recordOwnerGroupFilter)
+                    .listRecordSetData(recordsPaging.maxItems, startFrom, recordName, $scope.selectedRecordTypes.toString(), $scope.nameSort, $scope.recordOwnerGroupFilter, recordData)
                     .then(function(response) {
                         recordsPaging = pagingService.prevPageUpdate(response.data.nextId, recordsPaging);
                         updateRecordDisplay(response.data.recordSets);
@@ -235,8 +295,15 @@
             };
 
             $scope.nextPage = function() {
+                if($scope.searchByRecordData){
+                    recordData = $scope.query;
+                    recordName = undefined;
+                } else {
+                    recordName = $scope.query;
+                    recordData = undefined;
+                }
                 return recordsService
-                        .listRecordSetData(recordsPaging.maxItems, recordsPaging.next, $scope.query, $scope.selectedRecordTypes.toString(), $scope.nameSort, $scope.recordOwnerGroupFilter)
+                        .listRecordSetData(recordsPaging.maxItems, recordsPaging.next, recordName, $scope.selectedRecordTypes.toString(), $scope.nameSort, $scope.recordOwnerGroupFilter, recordData)
                         .then(function(response) {
                         var recordSets = response.data.recordSets;
                         recordsPaging = pagingService.nextPageUpdate(recordSets, response.data.nextId, recordsPaging);

@@ -83,9 +83,14 @@
                                         <span class="input-group-btn">
                                             <button id="record-search-button" type="submit" class="btn btn-primary"><span class="fa fa-search"></span></button>
                                         </span>
-                                <input id="record-search-text" ng-model="query" type="text" class="form-control" placeholder="Record Name">
+                                <input id="record-search-text" ng-model="query" type="text" class="form-control" placeholder="{{!searchByRecordData ? 'Record Name' : 'Record Data'}}">
                             </div>
                         </form>
+                        <div class="flex">
+                            <label class="reduce-font-weight remove-bottom-margin flex-1">
+                                <input class="isRecordDataSearch" type="checkbox" ng-model="searchByRecordData" ng-change="refreshRecords()"> Search by record data
+                            </label>
+                        </div>
                         <div class="dropdown">
                             <a class="record-type-filter-heading force-cursor dropdown-toggle" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">Filters<i class="fa fa-chevron-down"></i></a>
                             <div class="dropdown-menu" aria-labelledby="dropdownMenu1">

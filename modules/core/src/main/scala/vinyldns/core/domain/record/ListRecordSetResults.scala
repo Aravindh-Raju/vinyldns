@@ -51,6 +51,7 @@ case class ListRecordSetResults(
                                  recordNameFilter: Option[String] = None,
                                  recordTypeFilter: Option[Set[RecordType]] = None,
                                  recordOwnerGroupFilter: Option[String] = None,
+                                 recordDataFilter: Option[String] = None,
                                  nameSort: NameSort,
                                  recordTypeSort: RecordTypeSort
                                )

@@ -531,9 +531,10 @@ class RecordSetService(
       recordSetResults.startFrom,
       recordSetResults.nextId,
       recordSetResults.maxItems,
-      recordNameFilter,
+      Some(recordNameFilter),
       recordSetResults.recordTypeFilter,
       recordSetResults.recordOwnerGroupFilter,
+      None,
       recordSetResults.nameSort
     )
 
@@ -552,25 +553,29 @@ class RecordSetService(
   def searchRecordSets(
                         startFrom: Option[String],
                         maxItems: Option[Int],
-                        recordNameFilter: String,
+                        recordNameFilter: Option[String],
                         recordTypeFilter: Option[Set[RecordType]],
                         recordOwnerGroupFilter: Option[String],
+                        recordDataFilter: Option[String],
                         nameSort: NameSort,
                         authPrincipal: AuthPrincipal,
                         recordTypeSort: RecordTypeSort
                       ): Result[ListGlobalRecordSetsResponse] = {
     for {
-      _ <- validRecordNameFilterLength(recordNameFilter).toResult
-      formattedRecordNameFilter <- formatRecordNameFilter(recordNameFilter)
+      _ <- if(recordNameFilter.nonEmpty) validRecordNameFilterLength(recordNameFilter.get).toResult else ().toResult
+      _ <- if(recordDataFilter.nonEmpty) validRecordNameFilterLength(recordDataFilter.get).toResult else ().toResult
+      formattedRecordNameFilter <- if(recordNameFilter.nonEmpty) formatRecordNameFilter(recordNameFilter.get) else "".toResult
+      nameFilter = if (formattedRecordNameFilter.nonEmpty) Some(formattedRecordNameFilter) else None
       recordSetResults <- if (useRecordSetCache) {
         // Search the cache
         recordSetCacheRepository.listRecordSetData(
           None,
           startFrom,
           maxItems,
-          Some(formattedRecordNameFilter),
+          nameFilter,
           recordTypeFilter,
           recordOwnerGroupFilter,
+          recordDataFilter,
           nameSort
         ).toResult[ListRecordSetResults]
       } else {
@@ -599,6 +604,7 @@ class RecordSetService(
       recordNameFilter,
       recordSetResults.recordTypeFilter,
       recordSetResults.recordOwnerGroupFilter,
+      recordSetResults.recordDataFilter,
       recordSetResults.nameSort
     )
   }

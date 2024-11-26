@@ -35,6 +35,7 @@ trait RecordSetCacheRepository extends Repository {
                          recordNameFilter: Option[String],
                          recordTypeFilter: Option[Set[RecordType]],
                          recordOwnerGroupFilter: Option[String],
+                         recordDataFilter: Option[String],
                          nameSort: NameSort
                        ): IO[ListRecordSetResults]
 
